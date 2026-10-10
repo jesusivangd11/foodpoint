@@ -74,8 +74,11 @@
     </div>
     <div class="content" id="mainContent"></div>
     <div class="app-footer">
-      <div class="footer-brand" id="footerBrand">by <span>ditto</span></div>
-      <div class="footer-brand" id="footerBrand2" style="letter-spacing:0.3px">© 2026 <span>Mesana</span> — Punto de Venta para Restaurantes</div>
+      <div class="fkey-bar" id="fkeyBar"></div>
+      <div class="footer-marca">
+        <div class="footer-brand" id="footerBrand">by <span>ditto</span></div>
+        <div class="footer-brand" id="footerBrand2" style="letter-spacing:0.3px">© 2026 <span>Mesana</span> — Punto de Venta para Restaurantes</div>
+      </div>
     </div>
   </div>
 </div>
@@ -114,12 +117,17 @@
         <div class="p-image-preview" id="pImagePreview"><span>Sin imagen</span></div>
         <div class="p-image-actions">
           <input class="form-input" type="file" id="pImageFile" accept="image/*" onchange="handleProductImage(event)">
-          <button type="button" class="btn btn-secondary btn-sm" id="pImageRemoveBtn" onclick="removeProductImage()" style="display:none">Quitar imagen</button>
-          <div class="p-image-hint">Se mostrará grande en la tarjeta del producto, sobre el nombre.</div>
+          <div class="p-frame-hint" id="pFrameHint" style="display:none">✥ Arrastra la foto para elegir qué parte se ve</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" id="pImageCenterBtn" onclick="centrarEncuadreProducto()">Centrar</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="pImageRemoveBtn" onclick="removeProductImage()" style="display:none">Quitar imagen</button>
+          </div>
+          <div class="p-image-hint">El recuadro de arriba es del mismo tamaño que la tarjeta del menú: lo que ves ahí es lo que se verá.</div>
         </div>
       </div>
     </div>
     <input type="hidden" id="pImageData">
+    <input type="hidden" id="pImagePos">
 
     <div class="variants-section">
       <div class="variants-header">
@@ -133,6 +141,13 @@
         </button>
       </div>
       <div id="pVariantGroups"></div>
+      <label class="qty-variant-opt" id="pQtyByVariantRow">
+        <input type="checkbox" id="pQtyByVariant">
+        <span>
+          <span class="qvo-title">Pedir varias variantes de una vez</span>
+          <span class="qvo-desc">Al agregarlo al ticket se pone la cantidad de cada variante (ej. 2 de asado y 5 de prensado) en una sola pasada. Si lo dejas apagado, se agrega de uno en uno como siempre.</span>
+        </span>
+      </label>
     </div>
 
     <input type="hidden" id="pEditId">
@@ -194,7 +209,7 @@
       <label class="form-label">Indicaciones adicionales</label>
       <textarea class="form-input" id="productConfigNotes" style="height:80px;resize:vertical" placeholder="Ej. sin frijoles, tortilla bien dorada"></textarea>
     </div>
-    <div style="background:linear-gradient(135deg, var(--accent-mist) 0%, var(--accent-pale) 100%);padding:12px 14px;border-radius:10px;font-size:12.5px;color:var(--accent-dark);margin-bottom:14px;font-weight:600" id="productConfigSummary"></div>
+    <div style="background:linear-gradient(135deg, var(--accent-mist) 0%, var(--accent-pale) 100%);padding:12px 14px;border-radius:10px;font-size:13.5px;color:var(--accent-dark);margin-bottom:14px;font-weight:600" id="productConfigSummary"></div>
     <div class="modal-actions">
       <button type="button" class="btn btn-secondary" onclick="closeProductConfigModal()">Cancelar</button>
       <button type="button" class="btn btn-primary" id="productConfigAddBtn" onclick="saveConfiguredProduct()">Agregar al ticket</button>
@@ -268,7 +283,7 @@
   <div class="modal" style="width:400px">
     <h2>Confirmar eliminación</h2>
     <p class="modal-sub" id="deleteMsg"></p>
-    <div style="background:var(--accent-mist);padding:12px;border-radius:8px;margin-bottom:14px;font-size:12.5px;color:var(--charcoal)">
+    <div style="background:var(--accent-mist);padding:12px;border-radius:8px;margin-bottom:14px;font-size:13.5px;color:var(--charcoal)">
       ⚠️ Esta acción no se puede deshacer. El empleado no podrá acceder al sistema.
     </div>
     <div class="modal-actions">

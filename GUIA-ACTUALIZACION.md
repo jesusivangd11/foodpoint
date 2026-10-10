@@ -38,6 +38,121 @@ El acceso directo **"Mesana 3.0"** queda en el Escritorio y en el menú Inicio.
 
 ---
 
+## Versión 3.1.6 — qué cambia
+
+Instalador: `dist-installer\Mesana 3.0 Setup 3.1.6.exe`.
+
+**Nada se borra por accidente**
+
+- Al quitar un producto del ticket (bajar de 1 a 0, o la ×) **pregunta primero**.
+- Al **cancelar una comanda** pregunta antes, diciendo qué mesa y cuántos artículos.
+
+**Las ventas ya no se eliminan, solo se cancelan**
+
+- Se quitó el botón **"Eliminar venta"**. En su lugar está **"Cancelar venta"**, que
+  pregunta antes y **conserva el ticket** en el historial marcado como cancelado,
+  con quién lo canceló y a qué hora.
+- El servidor también rechaza cualquier intento de borrar una venta. El historial
+  queda completo y no se presta a que desaparezca dinero.
+
+**Uber y DiDi bien marcados**
+
+- En las ventas del día, los pedidos por plataforma llevan una **banda de color**
+  (verde Uber, naranja DiDi) igual que la banda roja de "CANCELADA", y dice el día
+  en que esa plataforma deposita.
+- En **Reportes → ventas por forma de pago** cada plataforma sale con su etiqueta
+  de color y su día de depósito.
+
+**Cobro en dos pasos**
+
+- Al cobrar se ve el total y dos botones: **"Elegir método de pago"** (efectivo,
+  transferencia, tarjeta, Uber o DiDi) y **"2 o más métodos de pago"** (para dividir
+  el total; ahí no salen las plataformas, porque ese pedido viene pagado completo).
+- Si es efectivo, se escribe con cuánto paga el cliente y el **cambio** sale solo.
+
+**Atajos de teclado (como Eleventa)**
+
+| Tecla | Hace |
+|---|---|
+| F1  | Cobrar e imprimir ticket |
+| F2  | Cobrar sin ticket |
+| F3  | Buscar producto |
+| F4  | Dashboard |
+| F5  | Comandas |
+| F6  | Ticket nuevo |
+| F7  | Enviar comanda a cocina |
+| F8  | Ventas del día |
+| F9  | Reportes |
+| F12 | Cobrar |
+| Esc | Cerrar la ventana abierta |
+
+La lista está siempre a la mano con **F10** o con el botón **⌨ Atajos** del pie de página.
+
+**Los números ya no llevan el cero rayado**
+
+- La fuente de las cifras cambió a una de ancho fijo con el cero limpio, así que las
+  columnas de precios siguen alineadas pero sin la raya que ensuciaba la vista.
+
+---
+
+## Versión 3.1.5 — qué cambia
+
+Instalador: `dist-installer\Mesana 3.0 Setup 3.1.5.exe`.
+
+**Ventas por Uber y DiDi**
+
+- Al cobrar, en la lista de formas de pago ahora salen **Uber** y **DiDi**. Se elige
+  la plataforma en lugar de efectivo o tarjeta, y el cobro se llena solo con el total.
+- Aparece un aviso en el momento del cobro: *"Venta por Uber Eats · deposita los
+  lunes · $X NO entra al efectivo de hoy"*. DiDi deposita los **martes**.
+- Las ventas por plataforma quedan marcadas con su etiqueta de color en la lista de
+  ventas y en el detalle del ticket, para reconocerlas de un vistazo.
+- La venta **sí cuenta** en las ventas del día y en los reportes; lo que cambia es de
+  dónde viene el dinero.
+
+**Corte de hoy (nuevo, en el Dashboard)**
+
+- Arriba del tablero hay un recuadro partido en dos: **En caja** (efectivo,
+  transferencia, tarjeta) y **Por cobrar a plataformas** (Uber y DiDi, cada una con
+  el día en que deposita).
+- Así, al contar el dinero ya no "falta" efectivo: lo de las plataformas está
+  separado y sumado aparte.
+
+**La comanda se manda sola**
+
+- Si le das *Enviar comanda a cocina* y todavía no hay mesa, la eliges y la comanda
+  **sale automáticamente**. Ya no hay que volver a presionar el botón.
+- Si cancelas la ventana de la mesa, no se manda nada.
+
+**Letra más grande en todo el programa**
+
+- Se subió el tamaño de letra de toda la interfaz (menús, tarjetas, ticket, tablas,
+  reportes). Pensado para la pantalla de la PC del trabajo, donde se veía chico.
+- La app de escritorio ahora abre con la interfaz **15% más grande** de fábrica, y se
+  ajusta en el momento con **Ctrl +** (agrandar), **Ctrl −** (achicar) y **Ctrl 0**
+  (volver al tamaño normal). El tamaño que elijas se guarda y se respeta la próxima
+  vez que abras el programa, incluso después de reinstalar.
+
+**La cantidad por variante ahora se activa producto por producto**
+
+- En el formulario del producto, abajo de las variantes, está la casilla
+  **"Pedir varias variantes de una vez"**.
+- Encendida: al agregarlo al ticket se pone la cantidad de cada variante
+  (2 de asado, 5 de prensado) en una sola pasada.
+- Apagada (como vienen todos los productos existentes): se agrega de uno en uno,
+  igual que siempre.
+
+**Fotos: recuadros más grandes y encuadre ajustable**
+
+- Las tarjetas del menú son más grandes y la foto se ve a mayor altura, mucho más clara.
+- En el formulario del producto (y del combo), **arrastra la foto dentro del recuadro**
+  para elegir qué parte se ve. El recuadro tiene la misma forma que la tarjeta del
+  menú, así que lo que ves ahí es exactamente lo que va a salir.
+- Botón **Centrar** para volver al encuadre original. El ajuste se guarda por producto
+  y se puede cambiar cuando quieras sin volver a subir la foto.
+
+---
+
 ## Versión 3.1.4 — qué cambia
 
 Instalador: `dist-installer\Mesana 3.0 Setup 3.1.4.exe`.

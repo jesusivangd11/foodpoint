@@ -132,7 +132,9 @@ function createTables() {
       cost REAL NOT NULL,
       stock INTEGER NOT NULL,
       variants TEXT,
-      image TEXT
+      image TEXT,
+      imagePos TEXT,
+      qtyByVariant INTEGER
     )`, () => {
       // Migraciones de columnas nuevas en tablas existentes
       db.all(`PRAGMA table_info(products)`, (err, columns) => {
@@ -142,6 +144,15 @@ function createTables() {
         }
         if (!columns.some(c => c.name === 'image')) {
           db.run(`ALTER TABLE products ADD COLUMN image TEXT`);
+        }
+        // Encuadre de la foto: que parte se ve en la tarjeta ("50% 30%").
+        if (!columns.some(c => c.name === 'imagePos')) {
+          db.run(`ALTER TABLE products ADD COLUMN imagePos TEXT`);
+        }
+        // 1 = este producto permite pedir varias variantes con su cantidad de
+        // una sola pasada. Lo decide el usuario al dar de alta o editar.
+        if (!columns.some(c => c.name === 'qtyByVariant')) {
+          db.run(`ALTER TABLE products ADD COLUMN qtyByVariant INTEGER`);
         }
       });
     });
@@ -186,7 +197,8 @@ function createTables() {
       description TEXT,
       items TEXT NOT NULL,
       icon TEXT,
-      image TEXT
+      image TEXT,
+      imagePos TEXT
     )`, () => {
       db.all(`PRAGMA table_info(combos)`, (err, columns) => {
         if (err || !columns) return;
@@ -195,6 +207,9 @@ function createTables() {
         }
         if (!columns.some(c => c.name === 'image')) {
           db.run(`ALTER TABLE combos ADD COLUMN image TEXT`);
+        }
+        if (!columns.some(c => c.name === 'imagePos')) {
+          db.run(`ALTER TABLE combos ADD COLUMN imagePos TEXT`);
         }
       });
     });
@@ -370,10 +385,10 @@ app.get('/api/products', (req, res) => {
 });
 
 app.post('/api/products', (req, res) => {
-  const { name, cat, price, cost, stock, variants, image } = req.body;
+  const { name, cat, price, cost, stock, variants, image, imagePos, qtyByVariant } = req.body;
   const variantsJson = JSON.stringify(Array.isArray(variants) ? variants : []);
-  db.run('INSERT INTO products (name, cat, price, cost, stock, variants, image) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [name, cat, price, cost, stock, variantsJson, image || null], function(err) {
+  db.run('INSERT INTO products (name, cat, price, cost, stock, variants, image, imagePos, qtyByVariant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, cat, price, cost, stock, variantsJson, image || null, imagePos || null, qtyByVariant ? 1 : 0], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ id: this.lastID });
   });
@@ -399,6 +414,8 @@ app.put('/api/products/:id', (req, res) => {
   setIf('stock');
   setIf('variants', v => JSON.stringify(Array.isArray(v) ? v : []));
   setIf('image', v => v || null);
+  setIf('imagePos', v => v || null);
+  setIf('qtyByVariant', v => (v ? 1 : 0));
   if (!fields.length) return res.json({ changes: 0 });
   values.push(req.params.id);
   db.run(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`, values, function(err) {
@@ -522,27 +539,36 @@ app.post('/api/sales', (req, res) => {
   });
 });
 
-app.delete('/api/sales/:id', (req, res) => {
-  // Log the deletion
+// Cancelar una venta: NO se borra, se marca como cancelada y queda el registro.
+app.put('/api/sales/:id/cancelar', (req, res) => {
   db.get('SELECT * FROM sales WHERE id = ?', [req.params.id], (err, sale) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!sale) return res.status(404).json({ error: 'Sale not found' });
-    const logData = {
-      type: 'delete_sale',
-      description: `Eliminación de venta #${sale.ticketNumber}`,
-      user: req.body.user || 'Sistema',
-      timestamp: new Date().toISOString(),
-      data: JSON.stringify(sale)
-    };
-    db.run('INSERT INTO movements (type, description, user, timestamp, data) VALUES (?, ?, ?, ?, ?)',
-      [logData.type, logData.description, logData.user, logData.timestamp, logData.data], (err) => {
-      if (err) console.error('Error logging movement:', err);
-    });
-    db.run('DELETE FROM sales WHERE id = ?', [req.params.id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+    if (!sale) return res.status(404).json({ error: 'La venta no existe' });
+    if (sale.status === 'Cancelado') return res.json({ changes: 0, yaCancelada: true });
+
+    db.run('UPDATE sales SET status = ? WHERE id = ?', ['Cancelado', req.params.id], function(err2) {
+      if (err2) return res.status(500).json({ error: err2.message });
+      const log = {
+        type: 'cancel_sale',
+        description: `Cancelación de venta #${sale.ticketNumber} por $${Number(sale.total || 0).toFixed(2)}`
+          + (req.body && req.body.reason ? ` (${req.body.reason})` : ''),
+        user: (req.body && req.body.user) || 'Sistema',
+        timestamp: new Date().toISOString(),
+        data: JSON.stringify(sale),
+      };
+      db.run('INSERT INTO movements (type, description, user, timestamp, data) VALUES (?, ?, ?, ?, ?)',
+        [log.type, log.description, log.user, log.timestamp, log.data], (e) => {
+          if (e) console.error('Error logging movement:', e);
+        });
       res.json({ changes: this.changes });
     });
   });
+});
+
+// Borrar ventas queda deshabilitado a proposito: el historial no se toca, para que
+// no se pueda desaparecer una venta. Lo unico permitido es cancelarla (arriba).
+app.delete('/api/sales/:id', (req, res) => {
+  res.status(405).json({ error: 'Las ventas no se eliminan, solo se cancelan.' });
 });
 
 // Categories
@@ -604,9 +630,9 @@ app.get('/api/combos', (req, res) => {
 });
 
 app.post('/api/combos', (req, res) => {
-  const { name, price, description, items, icon, image } = req.body;
-  db.run('INSERT INTO combos (name, price, description, items, icon, image) VALUES (?, ?, ?, ?, ?, ?)',
-    [name, price, description, JSON.stringify(items), icon || null, image || null], function(err) {
+  const { name, price, description, items, icon, image, imagePos } = req.body;
+  db.run('INSERT INTO combos (name, price, description, items, icon, image, imagePos) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [name, price, description, JSON.stringify(items), icon || null, image || null, imagePos || null], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ id: this.lastID });
   });
@@ -628,6 +654,7 @@ app.put('/api/combos/:id', (req, res) => {
   setIf('items', v => JSON.stringify(v || []));
   setIf('icon', v => v || null);
   setIf('image', v => v || null);
+  setIf('imagePos', v => v || null);
   if (!fields.length) return res.json({ changes: 0 });
   values.push(req.params.id);
   db.run(`UPDATE combos SET ${fields.join(', ')} WHERE id = ?`, values, function(err) {
