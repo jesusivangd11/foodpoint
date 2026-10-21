@@ -889,6 +889,7 @@ async function doLogin() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   await initApp();
+  await enforceLicense();
 }
 
 document.addEventListener('keydown', (event) => {
@@ -1082,7 +1083,10 @@ function renderPage(id) {
       break;
     case 'settings':
       content.innerHTML = buildSettings();
-      if (currentUser.role === 'owner') loadBackups();
+      if (currentUser.role === 'owner') {
+        loadBackups();
+        loadLicenseAndUpdates();
+      }
       break;
     default:
       content.innerHTML = buildPOS();
@@ -1596,12 +1600,29 @@ function addToOrder(id) {
   refreshOrderPanel();
 }
 
+// Un combo guarda dos tipos de renglon en `items`:
+//   fijo:   { id, qty, name }  -> siempre va (p.ej. 1 refresco)
+//   grupo:  { type: 'choice', label, qty, options: [{ id, name }] }
+//           -> el cliente elige `qty` de entre las opciones (Plato fuerte: montados o chilaquiles)
+// Al venderse, cada grupo se resuelve al producto elegido, asi que la comanda, los
+// reportes y el inventario siguen recibiendo comboItems normales { id, qty, name, variantLabel }.
+function isComboChoice(ci) {
+  return !!ci && ci.type === 'choice';
+}
+
+function comboChoiceProducts(ci) {
+  return (ci.options || []).map(o => productById(o.id)).filter(Boolean);
+}
+
+function comboItemNeedsConfig(ci) {
+  return isComboChoice(ci) || getProductVariants(productById(ci.id)).length > 0;
+}
+
 function addComboToOrder(id) {
   const combo = state.combos.find(c => c.id === id);
   if (!combo) return;
   // Inventario retirado: ya no se valida stock de los productos del combo.
-  const needsConfig = combo.items.some(ci => getProductVariants(productById(ci.id)).length > 0);
-  if (needsConfig) {
+  if (combo.items.some(comboItemNeedsConfig)) {
     openComboConfigModal(combo);
   } else {
     const comboOrderItem = {
@@ -1617,10 +1638,31 @@ function addComboToOrder(id) {
   }
 }
 
+function comboVariantGroupsHtml(index, unit, groups) {
+  return groups.map((group, gi) => `
+    <div class="combo-cfg-group">
+      <div class="combo-cfg-glabel">
+        ${esc(group.name)} — elige ${group.minSelect === group.maxSelect ? group.minSelect : `${group.minSelect}–${group.maxSelect}`}
+      </div>
+      <div class="combo-cfg-opts">
+        ${group.options.map(opt => `
+          <button type="button" class="cat-tab combo-order-opt"
+            data-item="${index}" data-unit="${unit}" data-group="${gi}" data-opt="${esc(opt.name)}"
+            onclick="toggleComboOrderOpt(${index},${unit},${gi},${group.maxSelect},this)">
+            ${esc(opt.name)}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 function openComboConfigModal(combo) {
-  const variantItems = combo.items
-    .map((ci, index) => ({ ci, index, product: productById(ci.id), groups: getProductVariants(productById(ci.id)) }))
-    .filter(x => x.groups.length > 0);
+  // Lo que no hay que elegir se muestra arriba como recordatorio de que ya va incluido.
+  const plain = combo.items.filter(ci => !comboItemNeedsConfig(ci));
+  const toConfig = combo.items
+    .map((ci, index) => ({ ci, index }))
+    .filter(({ ci }) => comboItemNeedsConfig(ci));
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
@@ -1631,35 +1673,33 @@ function openComboConfigModal(combo) {
       <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
     </div>
     <div class="modal-body combo-cfg-body">
-      ${variantItems.map(({ ci, index, product, groups }) => {
+      ${plain.length ? `<div class="combo-cfg-includes"><strong>Ya incluye:</strong> ${plain.map(ci => `${ci.qty}x ${esc(ci.name || productById(ci.id)?.name || '')}`).join(' · ')}</div>` : ''}
+      ${toConfig.map(({ ci, index }) => {
         // Cada pieza se configura por separado: 3 montados pueden llevar guisos distintos
         // y asi se refleja en la comanda de cocina y en el descuento de inventario.
         const units = Math.max(1, ci.qty || 1);
+        const choice = isComboChoice(ci);
+        const product = choice ? null : productById(ci.id);
+        const title = choice ? (ci.label || 'A elegir') : product.name;
         return `
         <div class="combo-cfg-item">
           <div class="combo-cfg-head">
-            <span class="combo-cfg-title">${esc(product.name)}${units > 1 ? ` × ${units}` : ''}</span>
+            ${choice ? '<span class="combo-cfg-badge">Elige</span>' : ''}
+            <span class="combo-cfg-title">${esc(title)}${units > 1 ? ` × ${units}` : ''}</span>
             ${units > 1 ? `<button type="button" class="combo-cfg-copy" onclick="copyComboUnitConfig(${index},${units})">Aplicar la 1ª a todas</button>` : ''}
           </div>
           ${Array.from({ length: units }, (_, u) => `
-            <div class="combo-cfg-unit">
-              ${units > 1 ? `<div class="combo-cfg-unit-label">Unidad ${u + 1} de ${units}</div>` : ''}
-              ${groups.map((group, gi) => `
-                <div class="combo-cfg-group">
-                  <div class="combo-cfg-glabel">
-                    ${esc(group.name)} — elige ${group.minSelect === group.maxSelect ? group.minSelect : `${group.minSelect}–${group.maxSelect}`}
-                  </div>
-                  <div class="combo-cfg-opts">
-                    ${group.options.map(opt => `
-                      <button type="button" class="cat-tab combo-order-opt"
-                        data-item="${index}" data-unit="${u}" data-group="${gi}" data-opt="${esc(opt.name)}"
-                        onclick="toggleComboOrderOpt(${index},${u},${gi},${group.maxSelect},this)">
-                        ${esc(opt.name)}
-                      </button>
-                    `).join('')}
-                  </div>
+            <div class="combo-cfg-unit" id="ccu-${index}-${u}" data-choice="">
+              ${units > 1 ? `<div class="combo-cfg-unit-label">${choice ? `${esc(title)} ${u + 1} de ${units}` : `Unidad ${u + 1} de ${units}`}</div>` : ''}
+              ${choice ? `
+                <div class="combo-cfg-opts combo-choice-opts">
+                  ${comboChoiceProducts(ci).map(p => `
+                    <button type="button" class="cat-tab combo-choice-opt" data-pid="${p.id}"
+                      onclick="pickComboChoice(${index},${u},${p.id})">${esc(p.name)}</button>
+                  `).join('')}
                 </div>
-              `).join('')}
+                <div class="combo-cfg-vars" id="ccv-${index}-${u}"></div>
+              ` : comboVariantGroupsHtml(index, u, getProductVariants(product))}
             </div>
           `).join('')}
         </div>`;
@@ -1671,6 +1711,24 @@ function openComboConfigModal(combo) {
     </div>
   </div>`;
   document.body.appendChild(overlay);
+
+  // Un grupo con una sola opcion no tiene nada que elegir: se deja marcada.
+  toConfig.forEach(({ ci, index }) => {
+    if (!isComboChoice(ci)) return;
+    const options = comboChoiceProducts(ci);
+    if (options.length !== 1) return;
+    for (let u = 0; u < Math.max(1, ci.qty || 1); u++) pickComboChoice(index, u, options[0].id);
+  });
+}
+
+// Elegir el producto de un grupo despliega SUS variantes (guiso, salsa...) debajo.
+function pickComboChoice(index, unit, productId) {
+  const box = document.getElementById(`ccu-${index}-${unit}`);
+  if (!box || box.dataset.choice === String(productId)) return;
+  box.dataset.choice = String(productId);
+  box.querySelectorAll('.combo-choice-opt').forEach(b => b.classList.toggle('active', b.dataset.pid === String(productId)));
+  const vars = document.getElementById(`ccv-${index}-${unit}`);
+  if (vars) vars.innerHTML = comboVariantGroupsHtml(index, unit, getProductVariants(productById(productId)));
 }
 
 function comboUnitOpts(itemIndex, unit, groupIndex) {
@@ -1691,11 +1749,14 @@ function toggleComboOrderOpt(itemIndex, unit, groupIndex, maxSelect, btn) {
   }
 }
 
-// Atajo: repetir en todas las piezas lo que se eligio en la primera.
+// Atajo: repetir en todas las piezas lo que se eligio en la primera
+// (el producto del grupo, si lo hay, y sus variantes).
 function copyComboUnitConfig(itemIndex, units) {
+  const firstChoice = document.getElementById(`ccu-${itemIndex}-0`)?.dataset.choice;
   const first = document.querySelectorAll(`.combo-order-opt[data-item="${itemIndex}"][data-unit="0"]`);
   const chosen = new Set([...first].filter(b => b.classList.contains('active')).map(b => `${b.dataset.group}|${b.dataset.opt}`));
   for (let u = 1; u < units; u++) {
+    if (firstChoice) pickComboChoice(itemIndex, u, Number(firstChoice));
     document.querySelectorAll(`.combo-order-opt[data-item="${itemIndex}"][data-unit="${u}"]`).forEach(b => {
       b.classList.toggle('active', chosen.has(`${b.dataset.group}|${b.dataset.opt}`));
     });
@@ -1706,28 +1767,37 @@ function confirmComboConfig(comboId) {
   const combo = state.combos.find(c => c.id === comboId);
   if (!combo) return;
   let valid = true;
+  const fail = (msg) => {
+    if (valid) showToast(msg, 'error');
+    valid = false;
+  };
   const comboItems = [];
   combo.items.forEach((ci, index) => {
-    const product = productById(ci.id);
-    const groups = getProductVariants(product);
-    const name = ci.name || product?.name || '';
     const units = Math.max(1, ci.qty || 1);
-    if (!groups.length) {
-      comboItems.push({ id: ci.id, qty: units, name, variantLabel: '', variantKey: '' });
+    if (!comboItemNeedsConfig(ci)) {
+      comboItems.push({ id: ci.id, qty: units, name: ci.name || productById(ci.id)?.name || '', variantLabel: '', variantKey: '' });
       return;
     }
+    const choice = isComboChoice(ci);
     // Una configuracion por pieza; al final se agrupan las piezas que quedaron iguales
     // (p.ej. "Montado x2 (Asado)" + "Montado x1 (Verde)").
     const byKey = new Map();
     for (let u = 0; u < units; u++) {
+      const unitTag = units > 1 ? ` (${u + 1} de ${units})` : '';
+      const productId = choice ? Number(document.getElementById(`ccu-${index}-${u}`)?.dataset.choice) : ci.id;
+      const product = productById(productId);
+      if (!product) {
+        fail(`Falta elegir "${ci.label || 'opción'}"${unitTag}`);
+        continue;
+      }
+      const name = choice ? product.name : (ci.name || product.name);
       const labelParts = [];
       const keyParts = [];
       let unitOk = true;
-      groups.forEach((group, gi) => {
+      getProductVariants(product).forEach((group, gi) => {
         const selected = [...comboUnitOpts(index, u, gi)].filter(b => b.classList.contains('active')).map(b => b.dataset.opt);
         if (group.minSelect > 0 && selected.length < group.minSelect) {
-          if (valid) showToast(`Falta elegir "${group.name}" en ${name}${units > 1 ? ` (unidad ${u + 1})` : ''}`, 'error');
-          valid = false;
+          fail(`Falta elegir "${group.name}" en ${name}${unitTag}`);
           unitOk = false;
           return;
         }
@@ -1736,9 +1806,10 @@ function confirmComboConfig(comboId) {
       });
       if (!unitOk) continue;
       const variantKey = keyParts.join('||');
-      const entry = byKey.get(variantKey);
+      const mapKey = `${product.id}::${variantKey}`;
+      const entry = byKey.get(mapKey);
       if (entry) entry.qty += 1;
-      else byKey.set(variantKey, { id: ci.id, qty: 1, name, variantLabel: labelParts.join(' · '), variantKey });
+      else byKey.set(mapKey, { id: product.id, qty: 1, name, variantLabel: labelParts.join(' · '), variantKey });
     }
     byKey.forEach(entry => comboItems.push(entry));
   });
@@ -2704,6 +2775,9 @@ async function sendComanda() {
     });
     const { id } = await res.json();
     orderData.id = id;
+    // El servidor pone la hora real, pero sin ella aqui la tarjeta decia "Hace NaN min".
+    orderData.createdAt = orderData.createdAt || new Date().toISOString();
+    orderData.updatedAt = orderData.createdAt;
     state.commandas.push(orderData);
     // Save settings
     await fetch('/api/settings', {
@@ -4009,6 +4083,16 @@ async function moveCategory(id, dir) {
   }
 }
 
+function comboContentSummary(combo) {
+  const items = combo.items || [];
+  const fixed = items.filter(ci => !isComboChoice(ci)).reduce((s, ci) => s + (ci.qty || 1), 0);
+  const groups = items.filter(isComboChoice);
+  const parts = [];
+  if (fixed) parts.push(`${fixed} fijo${fixed === 1 ? '' : 's'}`);
+  groups.forEach(g => parts.push(`${esc(g.label)}: ${g.options.length} opciones`));
+  return parts.join('<br>') || '—';
+}
+
 function buildCombos() {
   if (currentUser.role !== 'owner') return restricted();
   return `<div>
@@ -4020,13 +4104,13 @@ function buildCombos() {
       </button>
     </div>
     <table class="data-table">
-      <thead><tr><th>Ícono</th><th>Nombre</th><th>Precio</th><th>Artículos</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Ícono</th><th>Nombre</th><th>Precio</th><th>Contenido</th><th>Acciones</th></tr></thead>
       <tbody>${state.combos.map((combo) => `
         <tr>
           <td><span class="tbl-ic" style="color:var(--accent-dark)">${iconSvg(combo.icon, 20)}</span></td>
           <td><strong>${esc(combo.name)}</strong><div class="mi-desc" style="margin-top:4px">${esc(combo.description || '')}</div></td>
           <td>$${fmt(combo.price)} MXN</td>
-          <td>${combo.items?.length || 0}</td>
+          <td>${comboContentSummary(combo)}</td>
           <td><div style="display:flex;gap:6px">
             <button class="btn btn-amber btn-sm" onclick="openComboModal(${combo.id})">Editar</button>
             <button class="btn btn-danger btn-sm" onclick="deleteCombo(${combo.id})">Eliminar</button>
@@ -4037,8 +4121,13 @@ function buildCombos() {
   </div>`;
 }
 
+// Armador de combos: catalogo a la izquierda, contenido del combo a la derecha.
+// Tocar un producto lo agrega a la seccion marcada como destino ("Incluye siempre"
+// o un grupo a elegir), y el renglon recien agregado se resalta y se lleva a la vista
+// para que no se pierda entre los demas.
 function openComboModal(id = null) {
   const combo = id ? state.combos.find(c => c.id === id) : null;
+  const items = combo?.items || [];
   window.comboBuilderState = {
     id: combo?.id || null,
     name: combo?.name || '',
@@ -4047,34 +4136,67 @@ function openComboModal(id = null) {
     icon: combo?.icon || null,
     image: combo?.image || null,
     imagePos: combo?.imagePos || DEFAULT_IMAGE_POS,
-    items: combo?.items ? combo.items.map((item) => ({ ...item })) : [],
+    fixed: items.filter(ci => !isComboChoice(ci)).map(ci => ({ id: ci.id, qty: ci.qty || 1, name: ci.name || '' })),
+    groups: items.filter(isComboChoice).map(g => ({
+      label: g.label || '',
+      qty: g.qty || 1,
+      options: (g.options || []).map(o => ({ id: o.id, name: o.name || '' })),
+    })),
+    target: 'fixed', // 'fixed' o el indice del grupo que recibe lo que se toque en el catalogo
+    search: '',
+    cat: 'Todos',
+    flash: null,     // renglon recien agregado, para resaltarlo
   };
-  const comboImage = window.comboBuilderState.image;
-  const comboImagePos = window.comboBuilderState.imagePos;
-  const productOptions = state.products.map((product) => `<option value="${product.id}">${esc(product.name)}</option>`).join('');
+  const st = window.comboBuilderState;
+  const comboImage = st.image;
+  const comboImagePos = st.imagePos;
   const modal = document.createElement('div');
   modal.className = 'modal-overlay open';
   modal.dataset.modalType = 'combo';
-  modal.innerHTML = `<div class="modal modal-large">
+  modal.innerHTML = `<div class="modal cb-modal">
     <div class="modal-header">
-      <h3>${combo ? 'Editar' : 'Agregar'} Combo</h3>
+      <h3>${combo ? 'Editar' : 'Agregar'} combo</h3>
       <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
     </div>
-    <div class="modal-body">
+    <div class="cb-top">
       <div class="form-group">
-        <label>Nombre del combo</label>
-        <input type="text" id="comboName" value="${esc(window.comboBuilderState.name)}" placeholder="Ej. Combo Familiar">
+        <label class="form-label" for="comboName">Nombre del combo</label>
+        <input class="form-input" type="text" id="comboName" value="${esc(st.name)}" placeholder="Ej. Combo Familiar">
+      </div>
+      <div class="form-group cb-top-price">
+        <label class="form-label" for="comboPrice">Precio del combo (MXN)</label>
+        <input class="form-input" id="comboPrice" type="number" min="0" value="${esc(st.price)}" oninput="renderComboSummary()">
+      </div>
+    </div>
+    <div class="cb-tabs" role="tablist">
+      <button type="button" class="cb-tab active" data-tab="items" onclick="setComboTab('items')">¿Qué incluye?</button>
+      <button type="button" class="cb-tab" data-tab="look" onclick="setComboTab('look')">Descripción, ícono y foto</button>
+    </div>
+    <div class="cb-pane" data-pane="items">
+      <div class="cb-split">
+        <section class="cb-catalog">
+          <div class="cb-target" id="cbTarget"></div>
+          <input class="form-input" type="search" id="cbSearch" placeholder="Buscar producto…" oninput="comboCatalogFilter('search', this.value)">
+          <div class="cb-cats" id="cbCats"></div>
+          <div class="cb-cat-list" id="cbCatalog"></div>
+        </section>
+        <section class="cb-build">
+          <div class="cb-build-list" id="comboItemsList"></div>
+          <div class="cb-summary" id="cbSummary"></div>
+        </section>
+      </div>
+    </div>
+    <div class="cb-pane" data-pane="look" hidden>
+      <div class="form-group">
+        <label class="form-label" for="comboDesc">Descripción</label>
+        <input class="form-input" type="text" id="comboDesc" value="${esc(st.description)}" placeholder="Opcional. Ej. Plato fuerte + bebida + postre">
       </div>
       <div class="form-group">
-        <label>Descripción</label>
-        <input type="text" id="comboDesc" value="${esc(window.comboBuilderState.description)}" placeholder="Opcional">
+        <label class="form-label">Ícono</label>
+        ${iconPickerHtml(st.icon, 'comboIconPick')}
       </div>
       <div class="form-group">
-        <label>Ícono</label>
-        ${iconPickerHtml(window.comboBuilderState.icon, 'comboIconPick')}
-      </div>
-      <div class="form-group">
-        <label>Imagen del combo (opcional)</label>
+        <label class="form-label">Imagen del combo (opcional)</label>
         <div class="p-image-row">
           <div class="p-image-preview ${comboImage ? 'has-img encuadrable' : ''}" id="cImagePreview">${comboImage ? `<img src="${comboImage}" alt="preview" style="object-position:${esc(comboImagePos)}">` : '<span>Sin imagen</span>'}</div>
           <div class="p-image-actions">
@@ -4090,24 +4212,6 @@ function openComboModal(id = null) {
         <input type="hidden" id="cImageData" value="${comboImage || ''}">
         <input type="hidden" id="cImagePos" value="${esc(comboImagePos)}">
       </div>
-      <div class="form-row">
-        <div class="form-group" style="flex:3">
-          <label>Producto</label>
-          <select class="form-select" id="comboProductSelect">${productOptions}</select>
-        </div>
-        <div class="form-group" style="flex:1">
-          <label>Cantidad</label>
-          <input class="form-input" id="comboProductQty" type="number" min="1" value="1">
-        </div>
-        <div class="form-group" style="flex:1;align-self:flex-end;">
-          <button class="btn btn-primary btn-full" onclick="addComboItem()">Agregar ítem</button>
-        </div>
-      </div>
-      <div id="comboItemsList" class="combo-items-list"></div>
-      <div class="form-group">
-        <label>Precio total (MXN)</label>
-        <input class="form-input" id="comboPrice" type="number" min="0" value="${esc(window.comboBuilderState.price)}">
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
@@ -4115,44 +4219,273 @@ function openComboModal(id = null) {
     </div>
   </div>`;
   document.body.appendChild(modal);
+  renderComboCatalog();
   renderComboBuilderItems();
   // Deja la vista previa lista para arrastrar el encuadre.
   renderComboImagePreview(comboImage || '');
+  if (!combo) document.getElementById('comboName')?.focus();
 }
 
-function renderComboBuilderItems() {
-  const list = document.getElementById('comboItemsList');
-  if (!list) return;
-  if (!window.comboBuilderState.items.length) {
-    list.innerHTML = `<div class="empty-state" style="padding:20px;text-align:center;color:var(--stone)">Agrega los productos que formen parte de este combo</div>`;
+function setComboTab(tab) {
+  const modal = document.querySelector('.modal-overlay[data-modal-type="combo"]');
+  if (!modal) return;
+  modal.querySelectorAll('.cb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  modal.querySelectorAll('.cb-pane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
+}
+
+function comboThumbHtml(product, size = 22) {
+  if (product?.image) return `<span class="cb-thumb"><img src="${product.image}" alt="" style="object-position:${esc(product.imagePos || DEFAULT_IMAGE_POS)}"></span>`;
+  return `<span class="cb-thumb">${categorySvg(product?.cat, size)}</span>`;
+}
+
+function comboTargetName() {
+  const st = window.comboBuilderState;
+  if (st.target === 'fixed') return 'Incluye siempre';
+  return st.groups[st.target]?.label.trim() || `Grupo a elegir ${st.target + 1}`;
+}
+
+function comboCatalogFilter(key, value) {
+  window.comboBuilderState[key] = value;
+  renderComboCatalog();
+}
+
+function renderComboCatalog() {
+  const st = window.comboBuilderState;
+  const list = document.getElementById('cbCatalog');
+  if (!st || !list) return;
+  const group = st.target === 'fixed' ? null : st.groups[st.target];
+
+  document.getElementById('cbTarget').innerHTML = `
+    <span class="cb-target-label">Lo que toques se agrega a</span>
+    <span class="cb-target-name ${group ? 'is-group' : ''}">${esc(comboTargetName())}</span>`;
+
+  const usedCats = new Set(state.products.map(p => p.cat));
+  const cats = ['Todos', ...state.categories.map(c => c.name).filter(n => usedCats.has(n))];
+  document.getElementById('cbCats').innerHTML = cats.map(c => `
+    <button type="button" class="cb-cat ${st.cat === c ? 'active' : ''}" onclick="comboCatalogFilter('cat', ${esc(JSON.stringify(c))})">${esc(c)}</button>
+  `).join('');
+
+  const term = st.search.trim().toLowerCase();
+  const products = state.products.filter(p =>
+    (st.cat === 'Todos' || p.cat === st.cat) && (!term || p.name.toLowerCase().includes(term)));
+  if (!products.length) {
+    list.innerHTML = `<div class="cb-empty">No hay productos${term ? ` que coincidan con "${esc(st.search)}"` : ''}.</div>`;
     return;
   }
-  list.innerHTML = window.comboBuilderState.items.map((item, index) => {
-    const product = productById(item.id);
-    return `<div class="combo-item-row">
-      <div><strong>${esc(product?.name || item.name)}</strong></div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span>Cantidad: ${item.qty}</span>
-        <button class="btn btn-danger btn-sm" onclick="removeComboItem(${index})">Eliminar</button>
-      </div>
-    </div>`;
+  list.innerHTML = products.map(p => {
+    let mark = '+';
+    let inTarget = false;
+    if (group) {
+      inTarget = group.options.some(o => o.id === p.id);
+      if (inTarget) mark = '✓';
+    } else {
+      const fixed = st.fixed.find(f => f.id === p.id);
+      if (fixed) { inTarget = true; mark = `×${fixed.qty}`; }
+    }
+    const hasVariants = getProductVariants(p).length > 0;
+    return `<button type="button" class="cb-prod ${inTarget ? 'in' : ''}" onclick="comboCatalogPick(${p.id})"
+        title="${group ? (inTarget ? 'Quitar de las opciones' : 'Agregar como opción') : 'Agregar al combo'}">
+      ${comboThumbHtml(p)}
+      <span class="cb-prod-txt">
+        <span class="cb-prod-name">${esc(p.name)}</span>
+        <span class="cb-prod-meta">$${fmt(p.price)}${hasVariants ? ' · con variantes' : ''}</span>
+      </span>
+      <span class="cb-prod-mark">${mark}</span>
+    </button>`;
   }).join('');
 }
 
-function addComboItem() {
-  const productId = Number(document.getElementById('comboProductSelect').value);
-  const qty = Math.max(1, Number(document.getElementById('comboProductQty').value) || 1);
+function comboCatalogPick(productId) {
+  const st = window.comboBuilderState;
   const product = productById(productId);
-  if (!product) return showToast('Selecciona un producto válido', 'error');
-  const existing = window.comboBuilderState.items.find(item => item.id === productId);
-  if (existing) existing.qty += qty;
-  else window.comboBuilderState.items.push({ id: productId, qty, name: product.name });
+  if (!st || !product) return;
+  if (st.target === 'fixed') {
+    const existing = st.fixed.find(f => f.id === productId);
+    if (existing) existing.qty += 1;
+    else st.fixed.push({ id: productId, qty: 1, name: product.name });
+    st.flash = `f-${productId}`;
+  } else {
+    const group = st.groups[st.target];
+    if (!group) return;
+    const at = group.options.findIndex(o => o.id === productId);
+    if (at !== -1) {
+      group.options.splice(at, 1);
+      st.flash = null;
+    } else {
+      group.options.push({ id: productId, name: product.name });
+      st.flash = `g${st.target}-${productId}`;
+    }
+  }
   renderComboBuilderItems();
+  renderComboCatalog();
+}
+
+// Cambia la seccion destino sin redibujar todo, para no quitarle el foco
+// al nombre del grupo mientras se escribe.
+function setComboTarget(target) {
+  const st = window.comboBuilderState;
+  if (!st || st.target === target) return;
+  if (target !== 'fixed' && !st.groups[target]) return;
+  st.target = target;
+  document.querySelectorAll('#comboItemsList .cb-sec').forEach(sec => {
+    sec.classList.toggle('is-target', sec.dataset.target === String(target));
+  });
+  renderComboCatalog();
+}
+
+function comboStepperHtml(value, onMinus, onPlus) {
+  return `<span class="cb-step">
+    <button type="button" onclick="${onMinus}" aria-label="Menos">−</button>
+    <span class="cb-step-val">${value}</span>
+    <button type="button" onclick="${onPlus}" aria-label="Más">+</button>
+  </span>`;
+}
+
+function renderComboBuilderItems() {
+  const st = window.comboBuilderState;
+  const list = document.getElementById('comboItemsList');
+  if (!st || !list) return;
+  const isTarget = (t) => String(st.target) === String(t) ? 'is-target' : '';
+
+  const fixedRows = st.fixed.map((item, index) => {
+    const product = productById(item.id);
+    return `<div class="cb-row ${st.flash === `f-${item.id}` ? 'flash' : ''}" data-k="f-${item.id}">
+      ${comboThumbHtml(product, 18)}
+      <span class="cb-row-name">${esc(product?.name || item.name)}</span>
+      ${comboStepperHtml(item.qty, `changeComboFixedQty(${index},-1)`, `changeComboFixedQty(${index},1)`)}
+      <button type="button" class="cb-del" onclick="removeComboItem(${index})" title="Quitar del combo">×</button>
+    </div>`;
+  }).join('');
+
+  const groupsHtml = st.groups.map((group, gi) => `
+    <div class="cb-sec cb-group ${isTarget(gi)}" data-target="${gi}" onclick="setComboTarget(${gi})">
+      <div class="cb-sec-head">
+        <span class="cb-badge">A elegir</span>
+        <input class="cb-group-label" type="text" value="${esc(group.label)}" placeholder="Nombre del grupo (ej. Plato fuerte)"
+          oninput="renameComboGroup(${gi}, this.value)">
+        <button type="button" class="cb-del" onclick="event.stopPropagation(); removeComboGroup(${gi})" title="Eliminar grupo">×</button>
+      </div>
+      <div class="cb-group-qty">
+        Lleva ${comboStepperHtml(group.qty, `changeComboGroupQty(${gi},-1)`, `changeComboGroupQty(${gi},1)`)}
+        <span>${group.qty === 1 ? 'y se elige entre:' : 'y cada uno se elige entre:'}</span>
+      </div>
+      <div class="cb-chips">
+        ${group.options.length ? group.options.map((opt, oi) => `
+          <span class="cb-chip ${st.flash === `g${gi}-${opt.id}` ? 'flash' : ''}" data-k="g${gi}-${opt.id}">
+            ${esc(productById(opt.id)?.name || opt.name)}
+            <button type="button" onclick="event.stopPropagation(); removeComboGroupOption(${gi},${oi})" title="Quitar opción">×</button>
+          </span>`).join('')
+        : '<span class="cb-sec-empty">Toca en el catálogo los productos que el cliente puede elegir.</span>'}
+      </div>
+    </div>`).join('');
+
+  list.innerHTML = `
+    <div class="cb-sec ${isTarget('fixed')}" data-target="fixed" onclick="setComboTarget('fixed')">
+      <div class="cb-sec-head">
+        <span class="cb-sec-title">Incluye siempre</span>
+        <span class="cb-sec-count">${st.fixed.reduce((s, f) => s + f.qty, 0) || ''}</span>
+      </div>
+      ${fixedRows || '<div class="cb-sec-empty">Toca un producto del catálogo para agregarlo. Si el cliente puede escoger entre varios, usa un grupo a elegir.</div>'}
+    </div>
+    ${groupsHtml}
+    <button type="button" class="cb-add-group" onclick="addComboGroup()">
+      <strong>+ Agregar grupo a elegir</strong>
+      <span>Ej. Plato fuerte: montados o chilaquiles. Al vender se elige uno y luego sus variantes.</span>
+    </button>`;
+
+  renderComboSummary();
+  if (st.flash) {
+    list.querySelector(`[data-k="${st.flash}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    st.flash = null;
+  }
+}
+
+function renderComboSummary() {
+  const st = window.comboBuilderState;
+  const box = document.getElementById('cbSummary');
+  if (!st || !box) return;
+  const price = Number(document.getElementById('comboPrice')?.value) || 0;
+  let min = 0;
+  let max = 0;
+  st.fixed.forEach(f => {
+    const p = Number(productById(f.id)?.price) || 0;
+    min += p * f.qty;
+    max += p * f.qty;
+  });
+  st.groups.forEach(g => {
+    const prices = g.options.map(o => Number(productById(o.id)?.price) || 0);
+    if (!prices.length) return;
+    min += Math.min(...prices) * g.qty;
+    max += Math.max(...prices) * g.qty;
+  });
+  const separate = min === max ? `$${fmt(min)}` : `$${fmt(min)} – $${fmt(max)}`;
+  const saving = price > 0 && price < min ? `<span class="cb-sum-save">Ahorro ${min === max ? '' : 'desde '}$${fmt(min - price)}</span>` : '';
+  box.innerHTML = `
+    <span>Por separado: <strong>${separate}</strong></span>
+    <span>Combo: <strong>$${fmt(price)}</strong></span>
+    ${saving}`;
+}
+
+function changeComboFixedQty(index, delta) {
+  const item = window.comboBuilderState.fixed[index];
+  if (!item) return;
+  if (item.qty + delta <= 0) return removeComboItem(index);
+  item.qty += delta;
+  renderComboBuilderItems();
+  renderComboCatalog();
 }
 
 function removeComboItem(index) {
-  window.comboBuilderState.items.splice(index, 1);
+  window.comboBuilderState.fixed.splice(index, 1);
   renderComboBuilderItems();
+  renderComboCatalog();
+}
+
+function addComboGroup() {
+  const st = window.comboBuilderState;
+  st.groups.push({ label: '', qty: 1, options: [] });
+  st.target = st.groups.length - 1;
+  renderComboBuilderItems();
+  renderComboCatalog();
+  const inputs = document.querySelectorAll('#comboItemsList .cb-group-label');
+  const input = inputs[inputs.length - 1];
+  input?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  input?.focus();
+}
+
+function renameComboGroup(index, value) {
+  const group = window.comboBuilderState.groups[index];
+  if (!group) return;
+  group.label = value;
+  if (window.comboBuilderState.target === index) {
+    const name = document.querySelector('#cbTarget .cb-target-name');
+    if (name) name.textContent = comboTargetName();
+  }
+}
+
+function changeComboGroupQty(index, delta) {
+  const group = window.comboBuilderState.groups[index];
+  if (!group) return;
+  group.qty = Math.max(1, group.qty + delta);
+  renderComboBuilderItems();
+}
+
+function removeComboGroup(index) {
+  const st = window.comboBuilderState;
+  const group = st.groups[index];
+  if (!group) return;
+  if (group.options.length && !confirm(`¿Eliminar el grupo "${group.label || 'a elegir'}"?`)) return;
+  st.groups.splice(index, 1);
+  if (st.target === index) st.target = 'fixed';
+  else if (typeof st.target === 'number' && st.target > index) st.target -= 1;
+  renderComboBuilderItems();
+  renderComboCatalog();
+}
+
+function removeComboGroupOption(groupIndex, optionIndex) {
+  window.comboBuilderState.groups[groupIndex]?.options.splice(optionIndex, 1);
+  renderComboBuilderItems();
+  renderComboCatalog();
 }
 
 async function saveCombo(id) {
@@ -4162,12 +4495,27 @@ async function saveCombo(id) {
   const icon = document.getElementById('comboIconPick')?.value || null;
   const image = document.getElementById('cImageData')?.value || null;
   const imagePos = document.getElementById('cImagePos')?.value || null;
-  const items = window.comboBuilderState.items.map(item => ({
-    id: item.id,
-    qty: item.qty,
-    name: item.name || productById(item.id)?.name || '',
-  }));
+  const st = window.comboBuilderState;
+  const emptyGroup = st.groups.findIndex(g => !g.options.length);
+  const items = [
+    ...st.fixed.map(item => ({
+      id: item.id,
+      qty: item.qty,
+      name: item.name || productById(item.id)?.name || '',
+    })),
+    ...st.groups.map((g, gi) => ({
+      type: 'choice',
+      label: g.label.trim() || `Elige ${gi + 1}`,
+      qty: g.qty,
+      options: g.options.map(o => ({ id: o.id, name: productById(o.id)?.name || o.name })),
+    })),
+  ];
   if (!name) return showToast('El nombre del combo es requerido', 'error');
+  if (emptyGroup !== -1) {
+    setComboTab('items');
+    setComboTarget(emptyGroup);
+    return showToast(`El grupo "${st.groups[emptyGroup].label || 'a elegir'}" no tiene opciones`, 'error');
+  }
   if (!items.length) return showToast('Agrega al menos un producto al combo', 'error');
   try {
     const payload = { name, description, price, items, icon, image, imagePos };
@@ -5582,6 +5930,7 @@ function buildSettings() {
         <button class="btn btn-primary btn-sm" onclick="saveSettings('printers')">Guardar</button>
       </div>
     </div>
+    ${settingsLicenseCardsHtml()}
     <div class="chart-card" style="padding:18px;margin-bottom:13px">
       <div class="chart-title">Respaldos</div>
       <p style="font-size:14px;color:var(--stone);margin-bottom:10px">El sistema crea un respaldo automatico cada hora y al arrancar. Manten las ultimas 30 copias.</p>
@@ -5975,7 +6324,8 @@ function renderBarraAtajos() {
 
 function appListaParaAtajos() {
   const app = document.getElementById('app');
-  return !!currentUser && app && !app.classList.contains('hidden');
+  // Con la pantalla de activacion encima no debe correr ningun atajo.
+  return !!currentUser && app && !app.classList.contains('hidden') && !document.getElementById('licenseGate');
 }
 
 function modalDeCobroAbierto() {
@@ -6250,3 +6600,211 @@ function manejarFlechas(e) {
 }
 
 document.addEventListener('keydown', manejarFlechas);
+
+// ===================== ACTUALIZACIONES Y LICENCIA =====================
+// Las actualizaciones las descarga Electron en segundo plano (main.js). Aqui solo
+// se muestran: un aviso cuando la version nueva ya esta lista y una tarjeta en
+// Configuracion. En el navegador (sin Electron) window.mesanaDesktop no existe.
+let updateInfo = { status: 'idle' };
+let licenseInfo = null;
+let updateBannerDismissed = null;
+
+function initUpdates() {
+  const desktop = window.mesanaDesktop;
+  if (!desktop) return;
+  desktop.updateState().then(handleUpdateStatus).catch(() => {});
+  desktop.onUpdate(handleUpdateStatus);
+}
+
+function handleUpdateStatus(info) {
+  const prev = updateInfo.status;
+  updateInfo = info || { status: 'idle' };
+  if (updateInfo.status === 'downloading' && prev !== 'downloading') {
+    showToast(`Descargando Mesana ${updateInfo.version || 'nueva'} en segundo plano…`, 'success');
+  }
+  renderUpdateBanner();
+  renderUpdateCard();
+}
+
+function renderUpdateBanner() {
+  document.getElementById('updateBanner')?.remove();
+  if (updateInfo.status !== 'ready' || updateBannerDismissed === updateInfo.version) return;
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.className = 'update-banner';
+  banner.innerHTML = `
+    <div class="update-banner-ic">↻</div>
+    <div class="update-banner-txt">
+      <strong>Mesana ${esc(updateInfo.version)} está lista</strong>
+      <span>Se instala al reiniciar (tarda unos segundos). Tus datos no se tocan.</span>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="installUpdateNow()">Reiniciar y actualizar</button>
+    <button class="update-banner-x" onclick="dismissUpdateBanner()" title="Más tarde (se instalará al cerrar Mesana)">×</button>`;
+  document.body.appendChild(banner);
+}
+
+function dismissUpdateBanner() {
+  updateBannerDismissed = updateInfo.version;
+  renderUpdateBanner();
+  showToast('Se instalará sola la próxima vez que cierres Mesana', 'success');
+}
+
+async function installUpdateNow() {
+  const pending = currentOrder?.items?.length;
+  if (pending && !confirm('Hay productos en el ticket actual. Se guardan, pero ¿reiniciar ahora para actualizar?')) return;
+  // Respaldo justo antes de actualizar, por si acaso.
+  try { await fetch('/api/backups/now', { method: 'POST' }); } catch (e) { /* no bloquea la actualizacion */ }
+  showToast('Actualizando… Mesana se volverá a abrir sola', 'success');
+  setTimeout(() => window.mesanaDesktop?.installUpdate(), 600);
+}
+
+async function checkUpdatesNow() {
+  if (!window.mesanaDesktop) return showToast('Las actualizaciones automáticas funcionan en la app instalada', 'error');
+  handleUpdateStatus(await window.mesanaDesktop.checkForUpdates());
+}
+
+function updateStatusText() {
+  switch (updateInfo.status) {
+    case 'checking': return 'Buscando actualizaciones…';
+    case 'up-to-date': return 'Tienes la versión más reciente.';
+    case 'downloading': return `Descargando la versión ${esc(updateInfo.version || '')}… ${updateInfo.percent || 0}%`;
+    case 'ready': return `La versión ${esc(updateInfo.version)} ya se descargó. Se instala al reiniciar.`;
+    case 'error': return esc(updateInfo.message || 'No se pudo revisar.');
+    case 'dev': return 'Modo desarrollo: las actualizaciones solo funcionan en la app instalada.';
+    default: return window.mesanaDesktop ? 'Mesana revisa sola cada pocas horas.' : 'Abierto desde el navegador: sin actualizaciones automáticas.';
+  }
+}
+
+function renderUpdateCard() {
+  const box = document.getElementById('updateCardBody');
+  if (!box) return;
+  box.innerHTML = `
+    <div class="upd-row">
+      <div>
+        <div class="upd-version">Versión instalada: <strong>${esc(licenseInfo?.version || '—')}</strong></div>
+        <div class="upd-status upd-${esc(updateInfo.status)}">${updateStatusText()}</div>
+        ${updateInfo.status === 'downloading' ? `<div class="upd-bar"><span style="width:${Number(updateInfo.percent) || 0}%"></span></div>` : ''}
+        ${updateInfo.notes && ['downloading', 'ready'].includes(updateInfo.status) ? `<div class="upd-notes">${esc(updateInfo.notes)}</div>` : ''}
+      </div>
+      ${updateInfo.status === 'ready'
+        ? '<button class="btn btn-primary btn-sm" onclick="installUpdateNow()">Reiniciar y actualizar</button>'
+        : `<button class="btn btn-secondary btn-sm" onclick="checkUpdatesNow()" ${updateInfo.status === 'checking' || updateInfo.status === 'downloading' ? 'disabled' : ''}>Buscar ahora</button>`}
+    </div>`;
+}
+
+async function fetchLicense() {
+  try {
+    const res = await fetch('/api/license');
+    licenseInfo = await res.json();
+  } catch (e) {
+    licenseInfo = null;
+  }
+  return licenseInfo;
+}
+
+function licenseSummaryHtml(info) {
+  if (!info) return '<div class="lic-state">No se pudo leer la licencia.</div>';
+  const map = {
+    activa: ['lic-ok', 'Licencia activa'],
+    fundador: ['lic-ok', 'Cliente fundador'],
+    prueba: ['lic-trial', `Prueba gratuita · quedan ${info.trialDaysLeft} día${info.trialDaysLeft === 1 ? '' : 's'}`],
+    vencida: ['lic-off', 'Sin licencia activa'],
+  };
+  const [cls, label] = map[info.status] || ['lic-off', info.status];
+  const rows = [];
+  if (info.holder) rows.push(['A nombre de', esc(info.holder)]);
+  if (info.plan) rows.push(['Plan', esc(info.plan)]);
+  if (info.status === 'activa') rows.push(['Vigencia', info.expires ? `hasta el ${esc(info.expires)}` : 'Permanente']);
+  if (info.reason) rows.push(['Motivo', esc(info.reason)]);
+  rows.push(['ID de este equipo', `<code class="lic-id">${esc(info.machineId)}</code>`]);
+  return `<div class="lic-state ${cls}">${label}</div>
+    <dl class="lic-rows">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+}
+
+function licenseFormHtml(inputId) {
+  return `<div class="form-group" style="margin-bottom:8px">
+      <label class="form-label" for="${inputId}">Clave de licencia</label>
+      <textarea class="form-input lic-input" id="${inputId}" rows="3" placeholder="Pega aquí la clave que empieza con MSN1."></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="activateLicense('${inputId}')">Activar</button>
+    </div>`;
+}
+
+async function activateLicense(inputId) {
+  const key = document.getElementById(inputId)?.value.trim();
+  if (!key) return showToast('Pega la clave de licencia', 'error');
+  try {
+    const res = await fetch('/api/license', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Licencia no válida', 'error');
+    licenseInfo = data;
+    showToast(`Licencia activada para ${data.holder}`, 'success');
+    document.getElementById('licenseGate')?.remove();
+    renderLicenseCard();
+  } catch (e) {
+    showToast('No se pudo activar la licencia', 'error');
+  }
+}
+
+async function loadLicenseAndUpdates() {
+  await fetchLicense();
+  renderLicenseCard();
+  renderUpdateCard();
+}
+
+function renderLicenseCard() {
+  const box = document.getElementById('licenseCardBody');
+  if (!box) return;
+  // Activa y fundador ya no necesitan clave; prueba y vencida muestran el campo para activar.
+  const needsKey = !licenseInfo || ['prueba', 'vencida'].includes(licenseInfo.status);
+  box.innerHTML = licenseSummaryHtml(licenseInfo) + (needsKey ? licenseFormHtml('licenseKeyInput') : '');
+}
+
+function settingsLicenseCardsHtml() {
+  return `
+    <div class="chart-card" style="padding:18px;margin-bottom:13px">
+      <div class="chart-title">Actualizaciones</div>
+      <div id="updateCardBody"><div style="color:var(--stone);font-size:14px">Cargando…</div></div>
+    </div>
+    <div class="chart-card" style="padding:18px;margin-bottom:13px">
+      <div class="chart-title">Licencia</div>
+      <div id="licenseCardBody"><div style="color:var(--stone);font-size:14px">Cargando…</div></div>
+    </div>`;
+}
+
+// Al entrar: si la prueba termino o la licencia vencio, se pide la clave antes
+// de dejar usar el sistema. Los datos siguen intactos; solo se pide activar.
+async function enforceLicense() {
+  const info = await fetchLicense();
+  if (!info) return true;
+  if (info.status === 'prueba' && currentUser?.role === 'owner' && info.trialDaysLeft <= 7) {
+    showToast(`Prueba de Mesana: quedan ${info.trialDaysLeft} días. Activa tu licencia en Configuración.`, 'success');
+  }
+  if (info.status !== 'vencida') return true;
+  showLicenseGate(info);
+  return false;
+}
+
+function showLicenseGate(info) {
+  document.getElementById('licenseGate')?.remove();
+  const gate = document.createElement('div');
+  gate.id = 'licenseGate';
+  gate.className = 'license-gate';
+  gate.innerHTML = `<div class="license-gate-card">
+    <div class="license-gate-mark">${renderBrandMarkMarkup(26)}</div>
+    <h2>Activa tu licencia de Mesana</h2>
+    <p>${esc(info.reason || 'Este equipo no tiene una licencia activa.')} Tus ventas, productos y respaldos siguen guardados; solo falta activar.</p>
+    ${licenseSummaryHtml(info)}
+    ${licenseFormHtml('gateLicenseKey')}
+    <p class="license-gate-help">¿No tienes clave? Pídela por WhatsApp al <strong>614 133 6763</strong> o a <strong>jesus.ivan.gd11@gmail.com</strong> e incluye el ID de este equipo.</p>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('licenseGate').remove(); logout();">Cerrar sesión</button>
+  </div>`;
+  document.body.appendChild(gate);
+}
+
+initUpdates();

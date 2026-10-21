@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { createLicenseStore } = require('./license');
 
 const app = express();
 const port = process.env.PORT || 4173;
@@ -790,6 +791,26 @@ app.post('/api/backups/restore', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Licencia y version (ver license.js)
+const licenseStore = createLicenseStore(DATA_DIR);
+const APP_VERSION = require('./package.json').version;
+
+function licenseStatus(callback) {
+  db.get('SELECT MIN(createdAt) AS firstSaleAt FROM sales', [], (err, row) => {
+    callback(licenseStore.status(err ? null : row && row.firstSaleAt));
+  });
+}
+
+app.get('/api/license', (req, res) => {
+  licenseStatus((status) => res.json({ ...status, version: APP_VERSION }));
+});
+
+app.post('/api/license', (req, res) => {
+  const result = licenseStore.activate((req.body || {}).key);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  licenseStatus((status) => res.json({ ...status, version: APP_VERSION }));
 });
 
 function start(options = {}) {

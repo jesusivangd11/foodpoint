@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mesana · Punto de venta para restaurantes</title>
+  <meta name="description" content="Mesana es el punto de venta para restaurantes y loncherías: comandas a cocina, combos a elegir, cobro con efectivo, tarjeta, Uber Eats y DiDi, reportes y respaldos automáticos. Funciona sin internet y se actualiza solo.">
+  <meta property="og:title" content="Mesana · Punto de venta para restaurantes">
+  <meta property="og:description" content="Toma pedidos, manda comandas a cocina y cobra en segundos. 30 días gratis.">
+  <meta property="og:image" content="assets/img/pos.webp">
+  <meta name="theme-color" content="#1F3D29">
+  <link rel="icon" href="assets/img/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,500..700,0..100,0..1;1,9..144,500..700,0..100,0..1&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="announce" id="announce" hidden></div>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Mesana, inicio">
+      <span class="brand-mark"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" stroke="#fff" stroke-width="1.3" opacity=".45"/><path d="M6.5 16.5V8L12 13.5L17.5 8V16.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="4.8" r="1.05" fill="#fff"/></svg></span>
+      Mesana
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" aria-current="page">Inicio</a></li>
+      <li><a href="#funciones">Funciones</a></li>
+      <li><a href="#video">Video</a></li>
+      <li><a href="#precios">Precios</a></li>
+      <li><a href="#novedades">Novedades</a></li>
+      <li><a href="ayuda.html">Ayuda</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <div class="bell-wrap">
+        <button class="bell" id="bell" aria-label="Novedades de Mesana" aria-expanded="false" aria-controls="bell-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        </button>
+        <div class="bell-panel" id="bell-panel" role="dialog" aria-label="Novedades"></div>
+      </div>
+      <a class="btn btn--solid" data-descargar href="#">Descargar</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menú" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="contenido">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="kicker reveal">Punto de venta para restaurantes · Windows 10 y 11</span>
+        <h1 class="reveal">Del pedido a la cocina, <em class="hand">sin</em> <span class="strike">vueltas.</span></h1>
+        <p class="lead reveal">Mesana toma la orden, manda la comanda y cobra en segundos. Hecho para loncherías, fondas y restaurantes que no pueden detenerse a la hora pico.</p>
+        <div class="hero-ctas reveal">
+          <a class="btn btn--solid" data-descargar href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+            Descargar gratis
+          </a>
+          <a class="btn btn--ghost" href="#video">Ver el tutorial · 2 min</a>
+        </div>
+        <ul class="hero-checks reveal">
+          <li>Gratis 30 días, sin tarjeta ni registro</li>
+          <li>Tus ventas se guardan en tu computadora</li>
+          <li>Soporte directo por WhatsApp: <a data-whatsapp="Soporte" href="#"><span data-telefono>614 133 6763</span></a></li>
+        </ul>
+      </div>
+      <div class="stage reveal">
+        <div class="screen">
+          <div class="screen-bar"><i></i><i></i><i></i><span>Mesana — Lonchería La Esquina</span></div>
+          <img src="assets/img/pos.webp" width="1920" height="1080" alt="Pantalla de venta de Mesana con el menú por categorías y un ticket con montados, chilaquiles, agua fresca y un combo">
+        </div>
+        <div class="receipt" aria-hidden="true">
+          <h4>Comanda #14</h4>
+          <div class="sub">Mesa 2 · 3 pax · 1:42 p.m.</div>
+          <hr>
+          <div class="row"><span>1x Montados</span><span>85.00</span></div>
+          <div class="var">Asado</div>
+          <div class="row"><span>1x Chilaquiles</span><span>95.00</span></div>
+          <div class="var">Roja · Huevo</div>
+          <div class="row"><span>1x Combo Desayuno</span><span>129.00</span></div>
+          <div class="var">› Chilaquiles (Verde · Pollo)</div>
+          <div class="var">› Café de olla</div>
+          <hr>
+          <div class="row tot"><span>TOTAL</span><span>$339.00</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <ul class="trust reveal" aria-label="Por qué confiar en Mesana">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0"/><path d="M3 3l18 18"/></svg>
+          <div><strong>Funciona sin internet</strong><span>Si se cae la red, sigues tomando pedidos y cobrando.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M9.5 10l1.8 1.8L15 8"/></svg>
+          <div><strong>Tus datos no salen de tu equipo</strong><span>Nada de nubes ajenas: tus ventas viven en tu computadora.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+          <div><strong>Respaldo cada hora</strong><span>Guarda las últimas 30 copias. Restauras con un clic.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-12.3 7.5L3 21l2-5.5A8.5 8.5 0 1121 11.5z"/></svg>
+          <div><strong>Soporte personalizado</strong><span>Atención directa por WhatsApp al <span data-telefono>614 133 6763</span>.</span></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FUNCIONES -->
+  <section class="section" id="funciones">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Pensado para el ritmo real de una cocina.</h2>
+        <p>Nada de menús enterrados ni diez clics para un refresco. Cada pantalla de Mesana está pensada para tomar el pedido de pie, con una mano y con fila en el mostrador.</p>
+      </div>
+
+      <div class="story">
+        <div class="story-row">
+          <div class="story-copy reveal">
+            <span class="story-num">Vender</span>
+            <h3>El menú a la izquierda, el ticket siempre a la vista.</h3>
+            <p>Toca el producto y elige su variante: guiso, salsa, sabor o proteína, con su precio extra si lo tiene. Busca escribiendo, abre varios tickets en pestañas y deja notas para cocina.</p>
+            <ul>
+              <li>Variantes con cantidad por opción</li>
+              <li>Varios tickets abiertos a la vez</li>
+              <li>Atajos de teclado F1–F12 y flechas</li>
+            </ul>
+          </div>
+          <div class="shot-pair reveal">
+            <div class="shot"><img src="assets/img/pos.webp" width="1920" height="1080" alt="Punto de venta de Mesana"></div>
+            <div class="shot"><img src="assets/img/variantes.webp" width="1920" height="1080" alt="Elegir el guiso de unos montados"></div>
+          </div>
+        </div>
+
+        <div class="story-row">
+          <div class="story-copy reveal">
+            <span class="story-num">Combos <span class="new-badge">Nuevo</span></span>
+            <h3>Combos donde el cliente elige.</h3>
+            <p>Arma un “Combo Desayuno” con un plato fuerte a elegir —montados o chilaquiles— y al venderlo Mesana despliega las variantes de lo que el cliente escogió. Lo fijo va solo.</p>
+            <ul>
+              <li>Grupos a elegir con una o varias piezas</li>
+              <li>Armador visual: tocas y se agrega</li>
+              <li>Ves cuánto ahorra el cliente contra comprar por separado</li>
+            </ul>
+          </div>
+          <div class="shot-pair reveal">
+            <div class="shot"><img src="assets/img/armador-combos.webp" width="1920" height="1080" alt="Armador de combos con catálogo y grupo a elegir"></div>
+            <div class="shot"><img src="assets/img/combo-elegir.webp" width="1920" height="1080" alt="Al vender, elegir el plato fuerte del combo y su guiso"></div>
+          </div>
+        </div>
+
+        <div class="story-row">
+          <div class="story-copy reveal">
+            <span class="story-num">Cocina y cobro</span>
+            <h3>Comanda a cocina, cobro en dos pasos.</h3>
+            <p>Comedor o para llevar, mesa y comensales: la comanda llega clara a cocina. Al cobrar eliges efectivo, tarjeta, transferencia, Uber Eats o DiDi, o divides el total. El cambio se calcula solo.</p>
+            <ul>
+              <li>Plataformas de reparto separadas del corte de caja</li>
+              <li>Las ventas no se borran: se cancelan y queda registro</li>
+              <li>Ticket con tu logo, impreso o sin imprimir</li>
+            </ul>
+          </div>
+          <div class="shot-pair reveal">
+            <div class="shot"><img src="assets/img/comandas.webp" width="1920" height="1080" alt="Comandas activas en cocina"></div>
+            <div class="shot"><img src="assets/img/cobro.webp" width="1920" height="1080" alt="Cobro en efectivo con cálculo de cambio"></div>
+          </div>
+        </div>
+
+        <div class="story-row">
+          <div class="story-copy reveal">
+            <span class="story-num">Números</span>
+            <h3>Sabes cuánto vendiste antes de cerrar la cortina.</h3>
+            <p>Dashboard con el corte de hoy, ticket promedio y lo más vendido. Reportes por día, semana o mes, por categoría, producto y hasta por variante, con ganancia y margen.</p>
+            <ul>
+              <li>Corte de caja: lo que hay en caja y lo que falta por cobrar a plataformas</li>
+              <li>Variantes más vendidas (¿asado o deshebrada?)</li>
+              <li>Exporta a Excel (CSV)</li>
+            </ul>
+          </div>
+          <div class="shot-pair reveal">
+            <div class="shot"><img src="assets/img/dashboard.webp" width="1920" height="1080" alt="Dashboard de ventas"></div>
+            <div class="shot"><img src="assets/img/reportes.webp" width="1920" height="1080" alt="Reportes de ventas por periodo"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEO -->
+  <section class="section video-band" id="video">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Mesana en dos minutos.</h2>
+        <p>Un recorrido real por la app: tomar un pedido con variantes, un combo a elegir, mandar a cocina, cobrar, armar un combo y ver tus reportes.</p>
+      </div>
+      <div class="video-frame reveal">
+        <video preload="metadata" playsinline poster="assets/img/video-poster.jpg" aria-label="Video tutorial de Mesana">
+          <source src="assets/video/mesana-tutorial.mp4" type="video/mp4">
+        </video>
+        <button class="video-play" aria-label="Reproducir el tutorial">
+          <span><svg viewBox="0 0 24 24" fill="#1F1F1D"><path d="M7 4.5v15a1 1 0 001.5.86l12.4-7.5a1 1 0 000-1.72L8.5 3.64A1 1 0 007 4.5z"/></svg></span>
+        </button>
+      </div>
+      <p class="video-foot reveal">¿Prefieres leerlo con calma? La <a href="ayuda.html">guía de ayuda</a> explica cada pantalla paso a paso.</p>
+    </div>
+  </section>
+
+  <!-- DETALLES -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Los detalles que te ahorran un mal día.</h2>
+      </div>
+      <div class="grid-feats">
+        <div class="feat reveal"><h3>Uber Eats y DiDi aparte</h3><p>Lo que te deben las plataformas no se mezcla con la caja. Tu corte cuadra.</p></div>
+        <div class="feat reveal"><h3>Nada desaparece</h3><p>Las ventas no se borran: se cancelan y queda quién y a qué hora. Quitar un producto del ticket siempre pregunta.</p></div>
+        <div class="feat reveal"><h3>Dueño y empleados</h3><p>Cada quien entra con su usuario. Los empleados venden; tú ves números y ajustes.</p></div>
+        <div class="feat reveal"><h3>Tu menú con fotos</h3><p>Sube la foto de cada platillo y arrastra para encuadrarla, o usa íconos.</p></div>
+        <div class="feat reveal"><h3>Rápido sin mouse</h3><p>F1 a F12, flechas y Enter. Como las cajas de siempre, pero bonito.</p></div>
+        <div class="feat reveal"><h3>Con tus colores</h3><p>Seis temas, tu logo en la app y en el ticket, y letra que se agranda con Ctrl +.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTUALIZACIONES -->
+  <section class="section" id="actualizaciones" style="background:var(--paper-2)">
+    <div class="wrap updates">
+      <div class="reveal">
+        <h2>Se actualiza sola. Tus datos ni se enteran.</h2>
+        <ol class="steps">
+          <li><div><strong>Revisa en segundo plano</strong><p>Cada pocas horas Mesana busca si hay una versión nueva, sin interrumpir la venta.</p></div></li>
+          <li><div><strong>Descarga mientras trabajas</strong><p>La versión nueva se baja sola. Te avisa con un mensaje cuando está lista.</p></div></li>
+          <li><div><strong>Reinicia cuando quieras</strong><p>Un clic en “Reiniciar y actualizar”, o se instala sola la próxima vez que cierres. Antes hace un respaldo.</p></div></li>
+        </ol>
+      </div>
+      <div class="shot reveal"><img src="assets/img/actualizacion.webp" width="1920" height="1080" alt="Aviso de Mesana: la versión nueva está lista para instalar"></div>
+    </div>
+  </section>
+
+  <!-- DESCARGA SEGURA -->
+  <section class="section" id="descargar">
+    <div class="wrap secure">
+      <div class="reveal">
+        <h2>Instálalo con confianza.</h2>
+        <p class="secure-lead">Mesana es un programa de Windows como cualquier otro. Se instala solo en tu usuario, no pide permisos de administrador y no instala nada extra. Si algún día lo desinstalas, tus datos se quedan donde estaban.</p>
+        <div class="smartscreen">
+          <h3>Si Windows muestra “Windows protegió su PC”</h3>
+          <p>Pasa con programas nuevos que todavía no tienen firma digital comercial. Mesana es seguro, solo da clic en:</p>
+          <ol>
+            <li><strong>Más información</strong></li>
+            <li><strong>Ejecutar de todas formas</strong></li>
+          </ol>
+          <p>Solo sale la primera vez que instalas. Las actualizaciones automáticas ya no lo muestran.</p>
+        </div>
+      </div>
+      <aside class="spec reveal" aria-label="Ficha del instalador">
+        <p class="spec-title">Ficha del instalador</p>
+        <dl>
+          <dt>Versión</dt><dd class="mono">v<span data-version>3.2.0</span></dd>
+          <dt>Publicada</dt><dd data-fecha>21 de octubre de 2026</dd>
+          <dt>Archivo</dt><dd class="mono" data-archivo>Mesana-Setup-3.2.0.exe</dd>
+          <dt>Tamaño</dt><dd data-tamano>83 MB</dd>
+          <dt>Sistema</dt><dd>Windows 10 y 11 (64 bits)</dd>
+          <dt>Se instala en</dt><dd>Tu usuario, sin permisos de administrador</dd>
+          <dt>Tus datos</dt><dd class="mono">%LOCALAPPDATA%\Mesana</dd>
+          <dt>Internet</dt><dd>Solo para buscar actualizaciones</dd>
+          <div data-sha-row hidden><dt>Huella SHA-256</dt><dd class="mono spec-sha" data-sha></dd></div>
+        </dl>
+        <a class="btn btn--solid" data-descargar href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+          Descargar Mesana
+        </a>
+        <p class="spec-note">Descarga oficial desde GitHub, el mismo lugar del que Mesana toma sus actualizaciones.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- PRECIOS -->
+  <section class="section" id="precios">
+    <div class="wrap">
+      <div class="section-head reveal" style="margin-inline:auto;text-align:center">
+        <h2>Pruébalo un mes. Decide después.</h2>
+        <p style="margin-inline:auto">Descarga Mesana y úsalo completo 30 días. Si te convence, activas tu licencia y todo lo que capturaste se queda.</p>
+      </div>
+      <div class="plans" id="planes"></div>
+      <p class="plans-note">Precios en pesos mexicanos. ¿Varias sucursales? <a data-whatsapp="Varias sucursales" href="#">Solicita una cotización</a>.</p>
+    </div>
+  </section>
+
+  <!-- NOVEDADES -->
+  <section class="section" id="novedades" style="padding-top:0">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Lo nuevo en Mesana.</h2>
+        <p>Cada versión llega sola a tu equipo. Aquí puedes ver qué cambió.</p>
+      </div>
+      <div class="releases" id="novedades-lista"></div>
+    </div>
+  </section>
+
+  <!-- QUIEN ESTA DETRAS -->
+  <section class="section maker-band" id="contacto">
+    <div class="wrap maker reveal">
+      <div class="maker-avatar" aria-hidden="true">J</div>
+      <div class="maker-copy">
+        <h2>Atención directa del desarrollador.</h2>
+        <p>Soy Jesús, desarrollador de Mesana en Chihuahua. Acompaño a cada negocio en la instalación, la carga de su menú y cualquier duda del día a día, y tomo en cuenta sus sugerencias para las siguientes versiones. Escríbeme y recibe atención personalizada.</p>
+        <div class="maker-actions">
+          <a class="btn btn--solid" data-whatsapp="Información" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-12.3 7.5L3 21l2-5.5A8.5 8.5 0 1121 11.5z"/></svg>
+            WhatsApp <span data-telefono>614 133 6763</span>
+          </a>
+          <a class="btn btn--ghost" data-mailto="Información" href="#"><span data-email>jesus.ivan.gd11@gmail.com</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREGUNTAS -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap faq">
+      <div class="reveal">
+        <h2>Lo que nos preguntan.</h2>
+        <p style="color:var(--ink-2);margin-top:18px">¿Algo más? La <a href="ayuda.html">guía de ayuda</a> lo explica paso a paso.</p>
+      </div>
+      <div class="reveal">
+        <details><summary>¿Es seguro instalarlo?</summary><p>Sí. Mesana no pide permisos de administrador, no instala programas extra y no envía tus ventas a ningún lado. Windows puede mostrar un aviso la primera vez porque es un programa nuevo; abajo de “Descargar” te explicamos qué hacer.</p></details>
+        <details><summary>Si tengo un problema, ¿quién me ayuda?</summary><p>El soporte lo da directamente el desarrollador de Mesana. Escribe por WhatsApp al <span data-telefono>614 133 6763</span> o a <span data-email>jesus.ivan.gd11@gmail.com</span> y recibirás atención personalizada.</p></details>
+        <details><summary>¿Necesito internet para usar Mesana?</summary><p>No. Vendes, cobras e imprimes sin internet. Solo lo usa para descargar actualizaciones cuando hay conexión.</p></details>
+        <details><summary>¿Qué pasa con mis datos cuando se actualiza?</summary><p>Nada. Tus ventas, productos y respaldos viven en una carpeta aparte del programa. Además, antes de instalar una actualización Mesana hace un respaldo.</p></details>
+        <details><summary>¿Funciona en mi computadora?</summary><p>Mesana funciona en Windows 10 y 11. Una computadora sencilla o una laptop es suficiente.</p></details>
+        <details><summary>¿Qué pasa al terminar la prueba?</summary><p>Mesana te pide una clave de licencia. Tu información sigue guardada; al activar, continúas justo donde te quedaste.</p></details>
+        <details><summary>¿Emite facturas (CFDI)?</summary><p>No. Mesana es punto de venta y control interno; los tickets no son comprobantes fiscales.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-final">
+    <div class="wrap">
+      <h2 class="reveal">Tu próxima hora pico, en orden.</h2>
+      <p class="reveal">Descarga Mesana gratis. Instalas en dos minutos.</p>
+      <div class="hero-ctas reveal">
+        <a class="btn btn--solid" data-descargar href="#">Descargar Mesana <span class="mono" style="opacity:.7">v<span data-version>3.2.0</span></span></a>
+        <a class="btn btn--ghost" data-whatsapp="Demostración" href="#">Pedir una demostración por WhatsApp</a>
+      </div>
+      <p class="btn-note reveal">Windows 10 y 11 · <span data-tamano>83 MB</span> · <a href="#descargar">¿Es seguro?</a></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="brand" href="index.html"><span class="brand-mark"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M6.5 16.5V8L12 13.5L17.5 8V16.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="4.8" r="1.05" fill="#fff"/></svg></span>Mesana</a>
+      <p>Punto de venta para restaurantes, hecho en Chihuahua, México.</p>
+    </div>
+    <div><h4>Producto</h4><ul><li><a href="#funciones">Funciones</a></li><li><a href="#precios">Precios</a></li><li><a href="#novedades">Novedades</a></li><li><a data-descargar href="#">Descargar</a></li></ul></div>
+    <div><h4>Ayuda</h4><ul><li><a href="ayuda.html">Guía de uso</a></li><li><a href="ayuda.html#instalar">Instalación</a></li><li><a href="ayuda.html#atajos">Atajos de teclado</a></li><li><a href="ayuda.html#licencia">Licencia</a></li></ul></div>
+    <div><h4>Contacto</h4><ul><li><a data-whatsapp="Información" href="#">WhatsApp <span data-telefono>614 133 6763</span></a></li><li><a data-mailto="Información" href="#"><span data-email>jesus.ivan.gd11@gmail.com</span></a></li><li><a href="licencia.html">Contrato de licencia</a></li></ul></div>
+    <div class="foot-bottom"><span>© 2026 Mesana. Todos los derechos reservados.</span><span class="mono">v<span data-version>3.2.0</span></span></div>
+  </div>
+</footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

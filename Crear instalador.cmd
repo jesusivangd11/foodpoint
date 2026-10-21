@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 echo ============================================
-echo   Creando instalador de Mesana 3.0...
+echo   Creando instalador de Mesana...
 echo ============================================
 echo.
 

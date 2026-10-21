@@ -1,11 +1,79 @@
 // Mesana 3.0 — Proceso principal de Electron.
 // Levanta el servidor interno (Express + SQLite) y lo muestra en una ventana
 // de escritorio propia. No abre cmd ni navegador.
-const { app, BrowserWindow, Menu, dialog } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 let mainWindow = null;
+
+// --- Actualizaciones automaticas ---
+// Cada equipo revisa solo si hay version nueva en GitHub Releases (ver "publish"
+// en package.json), la descarga en segundo plano y avisa en la interfaz. Se
+// instala cuando el usuario pulsa "Reiniciar y actualizar" o, si no lo hace, al
+// cerrar Mesana. Los datos viven en %LOCALAPPDATA%\Mesana y no se tocan.
+const UPDATE_CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
+let updateState = { status: 'idle' };
+let autoUpdater = null;
+
+function sendUpdateState(patch) {
+  updateState = { ...updateState, ...patch };
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:status', updateState);
+}
+
+function setupAutoUpdates() {
+  // En desarrollo (npm start) no hay instalador que actualizar.
+  if (!app.isPackaged) {
+    updateState = { status: 'dev' };
+    return;
+  }
+  try {
+    ({ autoUpdater } = require('electron-updater'));
+  } catch (err) {
+    updateState = { status: 'error', message: 'Modulo de actualizaciones no disponible' };
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('checking-for-update', () => sendUpdateState({ status: 'checking', message: null }));
+  autoUpdater.on('update-not-available', () => sendUpdateState({ status: 'up-to-date', checkedAt: new Date().toISOString() }));
+  autoUpdater.on('update-available', (info) => sendUpdateState({
+    status: 'downloading', version: info.version, notes: releaseNotesText(info.releaseNotes), percent: 0,
+  }));
+  autoUpdater.on('download-progress', (p) => sendUpdateState({ status: 'downloading', percent: Math.round(p.percent || 0) }));
+  autoUpdater.on('update-downloaded', (info) => sendUpdateState({
+    status: 'ready', version: info.version, notes: releaseNotesText(info.releaseNotes), percent: 100,
+  }));
+  autoUpdater.on('error', (err) => {
+    // Sin internet o GitHub caido: no es grave, se reintenta en la siguiente revision.
+    console.error('[update]', err && err.message);
+    sendUpdateState({ status: 'error', message: 'No se pudo revisar si hay actualizaciones (¿sin internet?).' });
+  });
+
+  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  setTimeout(check, 8000);
+  setInterval(check, UPDATE_CHECK_EVERY_MS);
+}
+
+function releaseNotesText(notes) {
+  if (!notes) return '';
+  const text = Array.isArray(notes) ? notes.map(n => n.note || '').join('\n') : String(notes);
+  return text.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim().slice(0, 600);
+}
+
+ipcMain.handle('app:version', () => app.getVersion());
+ipcMain.handle('update:state', () => updateState);
+ipcMain.handle('update:check', async () => {
+  if (!autoUpdater) return updateState;
+  try { await autoUpdater.checkForUpdates(); } catch (e) { /* el evento 'error' ya avisa */ }
+  return updateState;
+});
+ipcMain.handle('update:install', () => {
+  if (!autoUpdater || updateState.status !== 'ready') return false;
+  // isSilent=true: sin asistente del instalador; isForceRunAfter=true: reabre Mesana al terminar.
+  setImmediate(() => autoUpdater.quitAndInstall(true, true));
+  return true;
+});
 
 // --- Tamaño de la interfaz (zoom) ---
 // La PC del trabajo tiene pantalla grande y el programa se veía chico y lejano.
@@ -89,6 +157,7 @@ if (!gotLock) {
     }
 
     createWindow();
+    setupAutoUpdates();
   });
 
   app.on('window-all-closed', () => {
@@ -106,6 +175,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 

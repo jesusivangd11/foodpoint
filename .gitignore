@@ -23,3 +23,7 @@ graphify-out/
 .graphify_*
 mesana_out.txt
 mesana_err.txt
+
+# --- Licencias: la clave privada NUNCA va al repo ---
+*.pem
+licencias-emitidas.csv

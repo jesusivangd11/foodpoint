@@ -1,41 +1,142 @@
-# Guía de Mesana 3.0 — Instalador y actualizaciones
+# Guía de Mesana — Actualizaciones, licencias y página web
 
-Desde la versión **3.0**, Mesana es una **aplicación de escritorio** de verdad:
-se instala con un instalador `.exe` (como cualquier programa) y se abre en su
-propia ventana. Ya **no** usa la ventana negra (cmd) ni el navegador.
+Mesana es una **aplicación de escritorio** (Electron): se instala con un `.exe` y
+abre en su propia ventana. Desde la **3.2.0 se actualiza sola** en cada equipo.
 
 ## Idea clave (lo que nunca cambia)
 
-- **El programa** se instala con el instalador. Al actualizar, se reinstala encima.
-- **Los datos** (ventas, productos, respaldos) viven aparte, en
-  `%LOCALAPPDATA%\Mesana` (normalmente `C:\Users\TU_USUARIO\AppData\Local\Mesana`).
-- Por eso, **actualizar el programa nunca toca tus datos**. La versión 3.0 usa la
-  misma carpeta de datos que la 2.0, así que al pasar de 2.0 a 3.0 **no se pierde nada**.
+- **El programa** se instala con el instalador; las actualizaciones lo reinstalan encima.
+- **Los datos** (ventas, productos, respaldos, licencia) viven aparte, en
+  `%LOCALAPPDATA%\Mesana`. Actualizar **nunca** los toca, y antes de instalar una
+  actualización Mesana hace un respaldo.
 
 ---
 
-## PC de desarrollo (donde haces cambios y creas el instalador)
+## Cómo funcionan las actualizaciones automáticas (3.2.0 en adelante)
 
-1. Haces tus cambios en el código.
-2. Doble clic en **`Crear instalador.cmd`** (o en una terminal: `npm run dist`).
-   - Genera el instalador en la carpeta **`dist-installer`**:
-     `Mesana 3.0 Setup 3.0.0.exe`.
-3. (Opcional, respaldo del código) Doble clic en **`Subir cambios.cmd`** para subir
-   el código a GitHub.
+```
+ PC de desarrollo                GitHub Releases (repo PÚBLICO)            Cada restaurante
+ ────────────────                ─────────────────────────────            ────────────────
+ cambias código                  jesusivangd11/mesana-releases            Mesana revisa al abrir
+ subes "version"   ── publica ─▶  Mesana-Setup-X.exe + latest.yml  ◀──     y cada 4 horas
+ Publicar actualizacion.cmd                                                descarga en 2º plano
+                                                                           avisa "X está lista"
+ página web  ◀── lee novedades y el botón de descarga ──                  instala al reiniciar
+```
 
-> Para subir la versión (3.0.0 → 3.0.1, etc.) cambia `"version"` en `package.json`
-> antes de crear el instalador. El nombre del `.exe` cambia solo con la versión.
+- La app usa `electron-updater` (main.js). Revisa 8 s después de abrir y cada 4 h.
+- Descarga sola; arriba aparece **"Mesana X está lista — Reiniciar y actualizar"**.
+  Si el usuario lo cierra, se instala sola al cerrar Mesana.
+- En **Configuración → Actualizaciones** se ve la versión y hay un botón **Buscar ahora**.
+- La **página web** lee las mismas Releases: muestra novedades, la campana de
+  avisos y el botón de descarga siempre apunta al instalador más nuevo.
 
-## PC de trabajo (donde se usa Mesana)
+### Configuración inicial (una sola vez)
 
-**Actualizar a una versión nueva:**
+1. En GitHub crea un repositorio **público** llamado `mesana-releases`
+   (vacío, solo con un README). Ahí solo van los instaladores; el código sigue
+   privado en `mesana`. Tiene que ser público para que los equipos de tus
+   clientes puedan descargar sin contraseña.
+2. Crea un token: GitHub → Settings → Developer settings → **Fine-grained token**,
+   solo para `mesana-releases`, permiso **Contents: Read and write**.
+3. Guarda el token en `%USERPROFILE%\.mesana-licencias\github-token.txt`
+   (una sola línea). Esa carpeta no está en el repo.
 
-1. Copia el archivo `Mesana 3.0 Setup X.X.X.exe` a la PC de trabajo (USB o descarga).
-2. Doble clic en el instalador → **Siguiente / Instalar**.
-3. Listo. Se abre sola y tus datos siguen intactos.
+### Publicar una actualización
 
-El acceso directo **"Mesana 3.0"** queda en el Escritorio y en el menú Inicio.
+1. Haz tus cambios y prueba con `npm start`.
+2. Sube `"version"` en `package.json` (3.2.0 → 3.2.1). **Siempre** tiene que subir,
+   o los equipos no la verán como nueva.
+3. Doble clic en **`Publicar actualizacion.cmd`**. Crea el instalador y lo sube a
+   GitHub Releases.
+4. En GitHub, edita la release y escribe las novedades (lista con `- `). Ese texto
+   sale en la app y en la página.
 
+En unas horas todos los equipos la tienen. `Crear instalador.cmd` sigue sirviendo
+para generar un `.exe` local sin publicar.
+
+### El último paso manual (solo una vez por equipo)
+
+Los equipos que tienen 3.1.6 o anterior **no** traen el actualizador. Hay que
+instalarles la **3.2.0** a mano (USB, como siempre). A partir de ahí, ya no.
+
+---
+
+## Licencias
+
+- **Prueba:** 30 días completos desde que se instala la 3.2.0.
+- **Fundador:** si la base de datos tiene ventas anteriores al 22-oct-2026, el
+  equipo queda con licencia "Fundador" automáticamente. La PC de trabajo actual
+  entra aquí: **no hay que hacerle nada**.
+- **Vencida:** al terminar la prueba aparece la pantalla de activación. Los datos
+  siguen intactos; solo pide la clave.
+
+Las claves son texto firmado (`MSN1.…`) con una clave privada Ed25519. La app solo
+trae la clave pública: puede comprobar una licencia pero no fabricarla. No
+necesita internet.
+
+**Clave privada:** `%USERPROFILE%\.mesana-licencias\clave-privada.pem`.
+**Respaldo:** ya hay una copia en la USB, carpeta `MESANA - LICENCIAS (NO BORRAR NI COMPARTIR)`. Guarda otra en tu nube. Si se pierde, no podrás emitir
+licencias nuevas que funcionen con las versiones ya instaladas. Nunca la subas a GitHub.
+
+### Emitir una licencia
+
+```
+node tools/generar-licencia.js --cliente "Tacos Lupita" --plan Pro
+node tools/generar-licencia.js --cliente "Café Norte" --plan Mensual --vence 2026-12-31
+node tools/generar-licencia.js --cliente "Fonda Rosy" --plan Pro --equipo 1A2B-3C4D-5E6F
+```
+
+- `--vence`: la licencia deja de funcionar ese día (para planes mensuales).
+- `--equipo`: solo funciona en ese equipo (el cliente ve su ID en
+  Configuración → Licencia). Sin esto, la clave sirve en cualquier equipo.
+- Todas quedan anotadas en `%USERPROFILE%\.mesana-licencias\licencias-emitidas.csv`.
+
+El cliente la pega en **Configuración → Licencia** (o en la pantalla de activación).
+
+El contrato de licencia (`LICENCIA.txt`) lo muestra el instalador y está también en
+`website/licencia.html`.
+
+---
+
+## Página web (`website/`)
+
+Sitio estático (HTML/CSS/JS, sin compilar): `index.html` (inicio, funciones, video,
+precios, novedades), `ayuda.html` (guía de uso con buscador) y `licencia.html`.
+
+- **Precios, contacto y repo de releases:** `website/assets/js/config.js`.
+  Cambia el correo/WhatsApp de ejemplo antes de publicar.
+- **Novedades:** se leen de GitHub Releases; si no hay conexión usa
+  `website/novedades.json`.
+- **Video:** `website/assets/video/mesana-tutorial.mp4`.
+- **Publicarla gratis:** sube la carpeta `website` a Netlify (arrastrar y soltar),
+  Vercel o GitHub Pages del repo público `mesana-releases`.
+
+---
+
+## PC de trabajo (instalación manual, como respaldo)
+
+1. Copia `dist-installer\Mesana-Setup-X.X.X.exe` a la PC de trabajo (USB).
+2. Doble clic → **Siguiente / Instalar**. Tus datos siguen intactos.
+
+
+---
+
+## Versión 3.2.0 — qué cambia
+
+Instalador: `dist-installer\Mesana-Setup-3.2.0.exe` (el nombre ya no lleva espacios).
+
+**Combos con grupos a elegir**
+
+- Además de lo fijo, un combo puede tener **grupos a elegir** ("Plato fuerte:
+  montados o chilaquiles"). Al venderlo se elige el producto y después sus variantes.
+- **Armador de combos nuevo:** catálogo a la izquierda, contenido a la derecha. Lo que
+  tocas se agrega a la sección marcada, se resalta y se lleva a la vista. Muestra
+  cuánto costaría por separado contra el precio del combo.
+
+**Actualizaciones automáticas y licencias** (ver arriba).
+
+**Arreglo:** al enviar una comanda la tarjeta decía "Hace NaN min" hasta reiniciar.
 ---
 
 ## Versión 3.1.6 — qué cambia

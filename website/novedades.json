@@ -1,0 +1,26 @@
+[
+  {
+    "version": "3.2.0",
+    "fecha": "2026-10-21",
+    "titulo": "Combos a elegir y actualizaciones automáticas",
+    "notas": "- **Grupos a elegir en combos:** el cliente escoge su plato fuerte (por ejemplo montados o chilaquiles) y después sus variantes.\n- **Armador de combos nuevo:** catálogo a un lado, contenido del combo al otro; lo que agregas se resalta y nunca se pierde de vista.\n- **Mesana se actualiza sola:** descarga la versión nueva en segundo plano y te avisa para reiniciar. Tus datos no se tocan.\n- **Licencias:** 30 días de prueba y activación con clave, sin internet."
+  },
+  {
+    "version": "3.1.6",
+    "fecha": "2026-10-09",
+    "titulo": "Plataformas de reparto y cobro en dos pasos",
+    "notas": "- Uber Eats y DiDi Food como forma de pago, separadas del corte de caja.\n- Cobro con un método o dividido entre varios.\n- Atajos F1–F12 y navegación con flechas.\n- Las ventas ya no se borran: solo se cancelan y queda el registro."
+  },
+  {
+    "version": "3.1.0",
+    "fecha": "2026-07-28",
+    "titulo": "Tickets en pestañas y reportes",
+    "notas": "- Varios tickets abiertos a la vez, en pestañas.\n- Página de reportes por periodo.\n- Fotos de productos y combos con encuadre.\n- Cantidad por variante."
+  },
+  {
+    "version": "3.0.0",
+    "fecha": "2026-07-21",
+    "titulo": "App de escritorio",
+    "notas": "- Mesana se instala como cualquier programa de Windows y abre en su propia ventana.\n- Tus datos viven aparte del programa, así que actualizar nunca los borra."
+  }
+]

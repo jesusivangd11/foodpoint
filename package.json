@@ -1,18 +1,20 @@
 {
   "name": "mesana",
-  "version": "3.1.6",
-  "description": "Mesana 3.0 - Punto de venta para restaurante (app de escritorio)",
+  "version": "3.2.1",
+  "description": "Mesana - Punto de venta para restaurante (app de escritorio)",
   "main": "main.js",
   "author": "Jesus",
   "scripts": {
     "start": "electron .",
     "server": "node server.js",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "release": "electron-builder --publish always"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
+    "electron-updater": "^6.8.9",
     "express": "^4.18.2",
     "sqlite3": "^5.1.7"
   },
@@ -29,7 +31,9 @@
     "npmRebuild": false,
     "files": [
       "main.js",
+      "preload.js",
       "server.js",
+      "license.js",
       "index.html",
       "mesana.ico",
       "assets/**/*",
@@ -42,7 +46,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "mesana.ico"
+      "icon": "mesana.ico",
+      "artifactName": "Mesana-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -51,7 +56,16 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Mesana 3.0",
-      "runAfterFinish": true
-    }
+      "runAfterFinish": true,
+      "license": "LICENCIA.txt"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jesusivangd11",
+        "repo": "mesana-releases",
+        "releaseType": "release"
+      }
+    ]
   }
 }
