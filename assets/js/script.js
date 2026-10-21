@@ -923,6 +923,8 @@ async function initApp() {
   renderBarraAtajos();
   navigateTo('pos');
   startClock();
+  loadPrintConfig();
+  startKitchenPolling();
 }
 
 function syncBranding() {
@@ -1086,6 +1088,7 @@ function renderPage(id) {
       if (currentUser.role === 'owner') {
         loadBackups();
         loadLicenseAndUpdates();
+        loadPrintSettings();
       }
       break;
     default:
@@ -2779,6 +2782,8 @@ async function sendComanda() {
     orderData.createdAt = orderData.createdAt || new Date().toISOString();
     orderData.updatedAt = orderData.createdAt;
     state.commandas.push(orderData);
+    // A cocina: se registra para el monitor y se imprime (sin detener la venta).
+    enviarTicketCocina(orderData, 'nueva', orderData.items);
     // Save settings
     await fetch('/api/settings', {
       method: 'PUT',
@@ -2853,6 +2858,9 @@ async function updateComanda() {
       }
     }
     state.commandas[index] = updatedComanda;
+    const cambiosCocina = diffItemsCocina(previous, next);
+    if (cambiosCocina.agregados.length) enviarTicketCocina(updatedComanda, 'adicional', cambiosCocina.agregados);
+    if (cambiosCocina.quitados.length) enviarTicketCocina(updatedComanda, 'cancelada', cambiosCocina.quitados);
 
     // Log edit with before/after diff
     const added = next.filter(n => !previous.find(p => p.id === n.id)).map(i => `+${i.qty}x ${i.name}`);
@@ -2927,9 +2935,13 @@ function showTicket() {
   openModal('ticketModal');
 }
 
-function printTicket() {
-  showToast('Ticket enviado a la impresora', 'success');
-  closeModal('ticketModal');
+async function printTicket() {
+  if (!currentOrder.items.length) return;
+  const ok = await imprimirDocumento('caja', docCuenta(currentOrder));
+  if (ok) {
+    showToast('Cuenta enviada a la impresora', 'success');
+    closeModal('ticketModal');
+  }
 }
 
 // ===================== COMANDAS =====================
@@ -2955,9 +2967,9 @@ function buildComandas() {
             <span class="badge ${comanda.type === 'llevar' ? 'badge-amber' : 'badge-green'}">${comanda.type === 'llevar' ? 'Para llevar' : esc(comanda.mesa)}</span>
           </div>
           <div style="margin-bottom:9px">
-            <span class="badge badge-green" style="font-size:11px;letter-spacing:.5px;display:inline-flex;align-items:center;gap:5px"><span class="live-dot"></span>ACTIVO · En cocina</span>
+            ${estadoCocinaHtml(comanda)}
           </div>
-          <div style="font-size:12.5px;color:var(--stone);margin-bottom:8px">Hace ${minutesAgo(comanda.createdAt)} · ${esc(comanda.waiter)} · ${comanda.comensales} pax</div>
+          <div style="font-size:12.5px;color:var(--stone);margin-bottom:8px">Hace ${minutesAgo(comanda.createdAt)} · ${esc(comanda.waiter)} · ${comanda.comensales} pax · <button type="button" class="link-reprint" onclick="event.stopPropagation(); reimprimirComanda(${comanda.id})">Reimprimir</button></div>
           <div style="border-top:1px solid var(--stone-pale);padding-top:8px;margin-bottom:8px">
             ${comanda.items.map((item) => `
               <div style="padding:2px 0;font-size:13.5px">
@@ -3295,7 +3307,13 @@ async function confirmPayment(imprimir) {
   document.getElementById('paymentModal')?.remove();
   paymentDraft = null;
   await finalizeSale(id, paymentInfo);
-  if (imprimir) mostrarTicketDeVenta(ticketNumber);
+  if (imprimir) {
+    if (!printConfig) await loadPrintConfig();
+    const venta = state.salesRecords.find((s) => s.ticketNumber === ticketNumber);
+    // Con impresora de caja sale el ticket directo; sin ella se muestra en Ventas como antes.
+    if (venta && impresoraLista('caja')) imprimirTicketVenta(venta);
+    else mostrarTicketDeVenta(ticketNumber);
+  }
 }
 
 // Abre el ticket de una venta ya cobrada para mandarlo a la impresora.
@@ -3385,6 +3403,7 @@ async function cancelComanda(id) {
   });
   try {
     await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+    enviarTicketCocina(comanda, 'cancelada', comanda.items);
 
     // Save as cancelled sale so it's visible in the sales report
     const totals = calculateTotals(comanda.items);
@@ -5617,10 +5636,13 @@ function renderSaleDetailHTML() {
         <div style="font-size:22px;font-weight:800;color:${cancelled?'#e53935':'var(--charcoal)'}">$${fmt(sale.total)} MXN</div>
         <div style="font-size:12.5px;color:var(--stone);margin-top:2px">${saleItems.reduce((s,i)=>s+i.qty,0)} artículo(s)${cancelled?' · Cancelada':''}</div>
       </div>
-      ${!cancelled ? `<button class="btn btn-danger btn-sm" onclick="confirmarCancelarVenta(${sale.id})">
+      ${!cancelled ? `<div style="display:flex;gap:7px"><button class="btn btn-secondary btn-sm" onclick="reimprimirVenta(${sale.id})">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-4H8v4a1 1 0 001 1zm1-11V5a1 1 0 011-1h2a1 1 0 011 1v1M9 7h6"/></svg>
+        Imprimir ticket
+      </button><button class="btn btn-danger btn-sm" onclick="confirmarCancelarVenta(${sale.id})">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
         Cancelar venta
-      </button>` : ''}
+      </button></div>` : ''}
     </div>
 
     ${!cancelled && (salePayments.length || sale.change > 0) ? `
@@ -5922,14 +5944,7 @@ function buildSettings() {
         <button class="btn btn-primary btn-sm" onclick="saveSettings('printing')">Guardar</button>
       </div>
     </div>
-    <div class="chart-card" style="padding:18px;margin-bottom:13px">
-      <div class="chart-title">Impresoras de Red</div>
-      <div class="form-group"><label class="form-label">Cocina (IP:Puerto)</label><input class="form-input" id="setting-kitchen-printer" value="${esc(state.settings.kitchenPrinter)}"></div>
-      <div class="form-group"><label class="form-label">Caja (IP:Puerto)</label><input class="form-input" id="setting-cash-printer" value="${esc(state.settings.cashPrinter)}"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:4px">
-        <button class="btn btn-primary btn-sm" onclick="saveSettings('printers')">Guardar</button>
-      </div>
-    </div>
+    ${settingsPrintCardsHtml()}
     ${settingsLicenseCardsHtml()}
     <div class="chart-card" style="padding:18px;margin-bottom:13px">
       <div class="chart-title">Respaldos</div>
@@ -6808,3 +6823,512 @@ function showLicenseGate(info) {
 }
 
 initUpdates();
+
+// ===================== IMPRESION Y COCINA =====================
+// Cada comanda que se envia, se le agregan productos o se cancela genera un
+// "ticket de cocina": se guarda (para el monitor de cocina) y se imprime en la
+// impresora de cocina. El ticket del cliente sale en la impresora de caja.
+// Impresoras: de red (IP, ESC/POS, la imprime el servidor) o de Windows (USB,
+// la imprime Electron en silencio). Ambas reciben el mismo documento.
+let printConfig = null;
+let printersList = null;
+let kitchenConfig = null;
+let kitchenEstado = {};
+let kitchenPollTimer = null;
+
+async function loadPrintConfig() {
+  try {
+    const res = await fetch('/api/config/print');
+    printConfig = await res.json();
+  } catch (e) {
+    printConfig = null;
+  }
+  return printConfig;
+}
+
+function impresoraLista(destino) {
+  const c = printConfig?.[destino];
+  if (!c || c.tipo === 'ninguna') return false;
+  return c.tipo === 'red' ? !!c.ip : !!c.nombre;
+}
+
+function horaCorta(fecha) {
+  return new Date(fecha || Date.now()).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+}
+
+function fechaCorta(fecha) {
+  return new Date(fecha || Date.now()).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function docAHtml(doc) {
+  const ancho = doc.ancho === 58 ? 58 : 80;
+  const util = ancho === 58 ? 48 : 72;
+  const fila = (l) => `<div class="f ${l.tam || ''} ${l.negrita ? 'b' : ''}"><span>${esc(l.izq)}</span><span>${esc(l.der)}</span></div>`;
+  const cuerpo = (doc.lineas || []).map((l) => {
+    if (l.tipo === 'linea') return '<div class="hr"></div>';
+    if (l.tipo === 'espacio') return '<div class="sp"></div>';
+    if (l.tipo === 'fila') return fila(l);
+    const cls = [l.alinear === 'centro' ? 'c' : l.alinear === 'der' ? 'r' : '', l.tam || '', l.negrita ? 'b' : ''].join(' ');
+    return `<div class="${cls}">${esc(l.texto).replace(/^( +)/, (m) => '&nbsp;'.repeat(m.length))}</div>`;
+  }).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page { margin: 0; }
+    html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+    body { width: ${util}mm; padding: 2mm ${(ancho - util) / 2}mm 6mm; font: 12px/1.32 'Lucida Console', 'Courier New', monospace; }
+    .c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
+    .alto { font-size: 16px; font-weight: bold; } .grande { font-size: 22px; font-weight: bold; line-height: 1.2; }
+    .f { display: flex; justify-content: space-between; gap: 8px; } .f span:last-child { white-space: nowrap; }
+    .hr { border-top: 1px dashed #000; margin: 5px 0; } .sp { height: 10px; }
+    .logo { display: block; margin: 0 auto 4px; width: 22mm; height: 22mm; object-fit: cover; }
+  </style></head><body>${doc.logo ? `<img class="logo" src="${doc.logo}">` : ''}${cuerpo}</body></html>`;
+}
+
+// Imprime en la impresora de 'cocina' o de 'caja'. Nunca lanza: si falla avisa y
+// devuelve false, para que una impresora apagada no detenga la venta.
+async function imprimirDocumento(destino, doc, { silencioso = false } = {}) {
+  if (!printConfig) await loadPrintConfig();
+  const c = printConfig?.[destino];
+  const nombre = destino === 'cocina' ? 'cocina' : 'caja';
+  if (!impresoraLista(destino)) {
+    if (!silencioso) showToast(`No hay impresora de ${nombre} configurada (Configuración → Impresoras)`, 'error');
+    return false;
+  }
+  const documento = { ...doc, ancho: c.ancho };
+  try {
+    if (c.tipo === 'red') {
+      const res = await fetch('/api/print/red', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: c.ip, puerto: c.puerto, copias: c.copias, documento: { ...documento, logo: undefined } }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Error de impresión');
+    } else {
+      if (!window.mesanaDesktop?.printHtml) throw new Error('Las impresoras USB solo funcionan en la app instalada');
+      await window.mesanaDesktop.printHtml({ deviceName: c.nombre, html: docAHtml(documento), anchoMm: c.ancho, copias: c.copias });
+    }
+    return true;
+  } catch (error) {
+    showToast(`No se imprimió en ${nombre}: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Renglones que ve la cocina: sin precios, con variantes, piezas del combo y notas.
+function itemsParaCocina(items) {
+  return (items || []).map((it) => ({
+    qty: it.qty,
+    name: it.name,
+    variantLabel: it.variantLabel || '',
+    notes: it.notes || '',
+    comboItems: it.isCombo && Array.isArray(it.comboItems)
+      ? it.comboItems.map((ci) => ({ qty: (ci.qty || 1) * (it.qty || 1), name: ci.name || '', variantLabel: ci.variantLabel || '' }))
+      : [],
+  }));
+}
+
+function claveCocina(it) {
+  const combo = (it.comboItems || []).map((ci) => `${ci.qty}:${ci.name}:${ci.variantLabel || ''}`).join(',');
+  return `${it.id}|${it.variantKey || it.variantLabel || ''}|${it.notes || ''}|${combo}`;
+}
+
+// Que se agrego y que se quito al editar una comanda (por producto + variante + nota).
+function diffItemsCocina(antes, despues) {
+  const suma = (lista) => {
+    const m = new Map();
+    lista.forEach((it) => {
+      const k = claveCocina(it);
+      const e = m.get(k) || { item: it, qty: 0 };
+      e.qty += it.qty;
+      m.set(k, e);
+    });
+    return m;
+  };
+  const a = suma(antes || []);
+  const d = suma(despues || []);
+  const agregados = [];
+  const quitados = [];
+  new Set([...a.keys(), ...d.keys()]).forEach((k) => {
+    const delta = (d.get(k)?.qty || 0) - (a.get(k)?.qty || 0);
+    if (delta > 0) agregados.push({ ...d.get(k).item, qty: delta });
+    if (delta < 0) quitados.push({ ...a.get(k).item, qty: -delta });
+  });
+  return { agregados, quitados };
+}
+
+function docCocina(t) {
+  const L = [];
+  const titulo = t.kind === 'adicional' ? 'ADICIONAL' : t.kind === 'cancelada' ? '*** CANCELAR ***' : 'COCINA';
+  L.push({ tipo: 'texto', texto: titulo, alinear: 'centro', tam: 'grande', negrita: true });
+  L.push({ tipo: 'texto', texto: `Orden #${t.ticketNumber}`, alinear: 'centro', tam: 'grande', negrita: true });
+  L.push({
+    tipo: 'texto', alinear: 'centro', tam: 'alto', negrita: true,
+    texto: t.type === 'llevar' ? 'PARA LLEVAR' : `${String(t.mesa || 'Comedor').toUpperCase()} · ${t.comensales || 1} pers.`,
+  });
+  L.push({ tipo: 'fila', izq: `Mesero: ${t.waiter || ''}`, der: horaCorta(t.createdAt) });
+  L.push({ tipo: 'linea' });
+  t.items.forEach((it) => {
+    L.push({ tipo: 'texto', texto: `${it.qty}  ${it.name}`, tam: 'alto', negrita: true });
+    if (it.variantLabel) L.push({ tipo: 'texto', texto: `    ${it.variantLabel}`, negrita: true });
+    (it.comboItems || []).forEach((ci) => L.push({ tipo: 'texto', texto: `    - ${ci.qty} ${ci.name}${ci.variantLabel ? ` (${ci.variantLabel})` : ''}` }));
+    if (it.notes) L.push({ tipo: 'texto', texto: `    ** ${it.notes}`, negrita: true });
+  });
+  L.push({ tipo: 'linea' });
+  if (t.notes) L.push({ tipo: 'texto', texto: `NOTA: ${t.notes}`, tam: 'alto', negrita: true });
+  return { lineas: L };
+}
+
+// Registra el ticket para el monitor de cocina y lo imprime en cocina.
+async function enviarTicketCocina(comanda, kind, items, { imprimir = true } = {}) {
+  if (!items?.length) return;
+  const ticket = {
+    orderId: comanda.id,
+    ticketNumber: comanda.ticketNumber,
+    kind,
+    type: comanda.type,
+    mesa: comanda.type === 'llevar' ? 'Para llevar' : comanda.mesa,
+    comensales: comanda.comensales,
+    waiter: comanda.waiter || currentUser?.name || '',
+    notes: kind === 'cancelada' ? '' : (comanda.notes || ''),
+    items: itemsParaCocina(items),
+    createdAt: new Date().toISOString(),
+  };
+  try {
+    await fetch('/api/kitchen/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ticket),
+    });
+  } catch (e) { /* el ticket impreso sigue saliendo aunque falle el monitor */ }
+  if (!printConfig) await loadPrintConfig();
+  if (imprimir && printConfig?.cocina?.auto && impresoraLista('cocina')) {
+    const ok = await imprimirDocumento('cocina', docCocina(ticket));
+    if (ok && kind !== 'nueva') showToast(kind === 'cancelada' ? 'Cancelación impresa en cocina' : 'Adicional impreso en cocina', 'success');
+  }
+}
+
+async function reimprimirComanda(id) {
+  const comanda = state.commandas.find((c) => c.id === id);
+  if (!comanda) return;
+  const ok = await imprimirDocumento('cocina', docCocina({
+    ...comanda,
+    kind: 'nueva',
+    mesa: comanda.type === 'llevar' ? 'Para llevar' : comanda.mesa,
+    items: itemsParaCocina(comanda.items),
+    createdAt: comanda.createdAt,
+  }));
+  if (ok) showToast(`Comanda #${comanda.ticketNumber} reimpresa en cocina`, 'success');
+}
+
+function encabezadoTicket(L) {
+  const s = state.settings;
+  L.push({ tipo: 'texto', texto: s.restaurantName || 'Mesana', alinear: 'centro', tam: 'alto', negrita: true });
+  if (s.address) L.push({ tipo: 'texto', texto: s.address, alinear: 'centro' });
+  if (s.phone) L.push({ tipo: 'texto', texto: `Tel. ${s.phone}`, alinear: 'centro' });
+  if (s.rfc) L.push({ tipo: 'texto', texto: `RFC ${s.rfc}`, alinear: 'centro' });
+}
+
+function renglonesProductos(L, items) {
+  items.forEach((it) => {
+    L.push({ tipo: 'fila', izq: `${it.qty} ${it.name}`, der: `$${fmt(it.price * it.qty)}` });
+    if (it.variantLabel) L.push({ tipo: 'texto', texto: `   ${it.variantLabel}` });
+    if (it.isCombo && it.comboItems?.length) {
+      it.comboItems.forEach((ci) => L.push({ tipo: 'texto', texto: `   - ${ci.qty * (it.qty || 1)} ${ci.name || ''}${ci.variantLabel ? ` (${ci.variantLabel})` : ''}` }));
+    }
+  });
+}
+
+function docTicketVenta(sale) {
+  const L = [];
+  encabezadoTicket(L);
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'fila', izq: `Ticket #${sale.ticketNumber}`, der: `${fechaCorta(sale.completedAt)} ${horaCorta(sale.completedAt)}` });
+  L.push({ tipo: 'texto', texto: sale.type === 'llevar' ? 'Para llevar' : `${sale.mesa || 'Comedor'} · ${sale.comensales || 1} pers.` });
+  L.push({ tipo: 'linea' });
+  renglonesProductos(L, sale.items || []);
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'fila', izq: 'TOTAL', der: `$${fmt(sale.total)}`, tam: 'alto', negrita: true });
+  const pagos = Array.isArray(sale.payments) && sale.payments.length ? sale.payments : [{ method: sale.paymentMethod || 'Efectivo', amount: sale.total }];
+  pagos.forEach((p) => L.push({ tipo: 'fila', izq: p.method, der: `$${fmt(p.amount)}` }));
+  if (sale.amountReceived) L.push({ tipo: 'fila', izq: 'Recibido', der: `$${fmt(sale.amountReceived)}` });
+  if (sale.change > 0) L.push({ tipo: 'fila', izq: 'Cambio', der: `$${fmt(sale.change)}`, negrita: true });
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'texto', texto: `Atendió: ${sale.waiter || ''}`, alinear: 'centro' });
+  L.push({ tipo: 'texto', texto: state.settings.ticketFooter || 'Gracias por su visita', alinear: 'centro', negrita: true });
+  L.push({ tipo: 'texto', texto: 'Este ticket no es un comprobante fiscal', alinear: 'centro' });
+  return { lineas: L, logo: state.settings.logoDataUrl || null };
+}
+
+// La "cuenta" que se lleva a la mesa antes de cobrar.
+function docCuenta(order) {
+  const totals = calculateTotals(order.items);
+  const L = [];
+  encabezadoTicket(L);
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'texto', texto: 'CUENTA', alinear: 'centro', tam: 'alto', negrita: true });
+  L.push({ tipo: 'fila', izq: order.type === 'llevar' ? 'Para llevar' : `${order.mesa || 'Comedor'} · ${order.comensales || 1} pers.`, der: `${fechaCorta()} ${horaCorta()}` });
+  L.push({ tipo: 'linea' });
+  renglonesProductos(L, order.items);
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'fila', izq: 'TOTAL', der: `$${fmt(totals.total)}`, tam: 'alto', negrita: true });
+  L.push({ tipo: 'espacio' });
+  L.push({ tipo: 'texto', texto: state.settings.ticketFooter || 'Gracias por su visita', alinear: 'centro' });
+  return { lineas: L, logo: state.settings.logoDataUrl || null };
+}
+
+async function imprimirTicketVenta(sale) {
+  const ok = await imprimirDocumento('caja', docTicketVenta(sale));
+  if (ok) showToast(`Ticket #${sale.ticketNumber} impreso`, 'success');
+  return ok;
+}
+
+function reimprimirVenta(id) {
+  const sale = state.salesRecords.find((s) => String(s.id) === String(id));
+  if (sale) imprimirTicketVenta(sale);
+}
+
+// ---- Estado de cocina en caja ----
+// Cada pocos segundos se pregunta que comandas ya marco la cocina como listas,
+// para avisar al mesero y marcar la tarjeta en Comandas.
+function startKitchenPolling() {
+  if (kitchenPollTimer) clearInterval(kitchenPollTimer);
+  const revisar = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch('/api/kitchen/estado');
+      const lista = await res.json();
+      const nuevo = {};
+      lista.forEach((e) => { nuevo[e.orderId] = e; });
+      let cambio = false;
+      Object.values(nuevo).forEach((e) => {
+        const antes = kitchenEstado[e.orderId];
+        const listaAhora = e.pendientes === 0 && e.listos > 0;
+        const listaAntes = antes && antes.pendientes === 0 && antes.listos > 0;
+        if (listaAhora && !listaAntes && antes) {
+          const comanda = state.commandas.find((c) => c.id === e.orderId);
+          if (comanda) {
+            showToast(`¡Orden #${comanda.ticketNumber} lista! ${comanda.type === 'llevar' ? 'Para llevar' : comanda.mesa}`, 'success');
+            sonidoListo();
+          }
+        }
+        if (!antes || antes.pendientes !== e.pendientes || antes.listos !== e.listos) cambio = true;
+      });
+      kitchenEstado = nuevo;
+      if (cambio && getCurrentActivePage() === 'comandas' && !document.querySelector('.modal-overlay.open')) renderPage('comandas');
+    } catch (e) { /* sin servidor por un momento: se reintenta solo */ }
+  };
+  revisar();
+  kitchenPollTimer = setInterval(revisar, 5000);
+}
+
+function sonidoListo() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1175].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.16);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + i * 0.16 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.16 + 0.3);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.16);
+      o.stop(ctx.currentTime + i * 0.16 + 0.32);
+    });
+  } catch (e) { /* sin audio */ }
+}
+
+function estadoCocinaHtml(comanda) {
+  const e = kitchenEstado[comanda.id];
+  if (e && e.pendientes === 0 && e.listos > 0) {
+    return `<span class="kds-badge kds-badge--listo">✓ Listo para entregar</span>`;
+  }
+  return `<span class="kds-badge"><span class="live-dot"></span>En cocina · ${minutesAgo(comanda.createdAt)}</span>`;
+}
+
+// ---- Configuracion: impresoras y monitor de cocina ----
+function settingsPrintCardsHtml() {
+  return `
+    <div class="chart-card" style="padding:18px;margin-bottom:13px">
+      <div class="chart-title">Impresoras</div>
+      <p class="prn-intro">La comanda se imprime sola en cocina al enviarla; si después agregas o quitas productos, sale un ticket de <strong>ADICIONAL</strong> o <strong>CANCELAR</strong>. El ticket del cliente sale en caja al cobrar con <kbd>F1</kbd>.</p>
+      <div id="printCardBody"><div style="color:var(--stone);font-size:14px">Cargando…</div></div>
+    </div>
+    <div class="chart-card" style="padding:18px;margin-bottom:13px">
+      <div class="chart-title">Monitor de cocina</div>
+      <div id="kitchenCardBody"><div style="color:var(--stone);font-size:14px">Cargando…</div></div>
+    </div>`;
+}
+
+async function loadPrintSettings() {
+  await loadPrintConfig();
+  if (window.mesanaDesktop?.listPrinters && !printersList) {
+    try { printersList = await window.mesanaDesktop.listPrinters(); } catch (e) { printersList = []; }
+  }
+  renderPrintSettings();
+  try {
+    kitchenConfig = await (await fetch('/api/config/kitchen')).json();
+  } catch (e) { kitchenConfig = null; }
+  renderKitchenSettings();
+}
+
+function printerBlockHtml(destino, titulo) {
+  const c = printConfig?.[destino] || {};
+  const opcionesWin = (printersList || []).map((p) => `<option value="${esc(p.name)}" ${p.name === c.nombre ? 'selected' : ''}>${esc(p.displayName)}${p.isDefault ? ' (predeterminada)' : ''}</option>`).join('');
+  return `<div class="prn-block" data-destino="${destino}">
+    <div class="prn-head">${titulo}</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="prn-${destino}-tipo">Tipo</label>
+        <select class="form-select" id="prn-${destino}-tipo" onchange="cambiarTipoImpresora('${destino}', this.value)">
+          <option value="ninguna" ${c.tipo === 'ninguna' ? 'selected' : ''}>Sin impresora</option>
+          <option value="windows" ${c.tipo === 'windows' ? 'selected' : ''}>USB o instalada en Windows</option>
+          <option value="red" ${c.tipo === 'red' ? 'selected' : ''}>De red (IP)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="prn-${destino}-ancho">Papel</label>
+        <select class="form-select" id="prn-${destino}-ancho">
+          <option value="80" ${c.ancho !== 58 ? 'selected' : ''}>80 mm</option>
+          <option value="58" ${c.ancho === 58 ? 'selected' : ''}>58 mm</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" ${c.tipo === 'windows' ? '' : 'hidden'} data-campo="windows">
+      <label class="form-label" for="prn-${destino}-nombre">Impresora</label>
+      ${window.mesanaDesktop?.listPrinters
+        ? `<select class="form-select" id="prn-${destino}-nombre"><option value="">Elige una…</option>${opcionesWin}</select>`
+        : '<div class="prn-note">Las impresoras USB se eligen desde la app instalada.</div>'}
+    </div>
+    <div class="form-row" ${c.tipo === 'red' ? '' : 'hidden'} data-campo="red">
+      <div class="form-group"><label class="form-label" for="prn-${destino}-ip">IP de la impresora</label><input class="form-input" id="prn-${destino}-ip" value="${esc(c.ip || '')}" placeholder="192.168.1.120"></div>
+      <div class="form-group"><label class="form-label" for="prn-${destino}-puerto">Puerto</label><input class="form-input" id="prn-${destino}-puerto" type="number" value="${esc(c.puerto || 9100)}"></div>
+    </div>
+    <div class="prn-foot">
+      ${destino === 'cocina' ? `<label class="prn-check"><input type="checkbox" id="prn-${destino}-auto" ${c.auto !== false ? 'checked' : ''}> Imprimir al enviar a cocina</label>` : '<span></span>'}
+      <label class="prn-check">Copias
+        <select id="prn-${destino}-copias">${[1, 2, 3].map((n) => `<option ${Number(c.copias) === n ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      </label>
+      <button class="btn btn-secondary btn-sm" onclick="probarImpresora('${destino}')">Imprimir prueba</button>
+    </div>
+  </div>`;
+}
+
+function renderPrintSettings() {
+  const box = document.getElementById('printCardBody');
+  if (!box) return;
+  box.innerHTML = printerBlockHtml('cocina', 'Cocina') + printerBlockHtml('caja', 'Caja (ticket del cliente)') + `
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">
+      <button class="btn btn-primary btn-sm" onclick="guardarImpresoras()">Guardar impresoras</button>
+    </div>`;
+}
+
+function cambiarTipoImpresora(destino, tipo) {
+  const block = document.querySelector(`.prn-block[data-destino="${destino}"]`);
+  if (!block) return;
+  block.querySelector('[data-campo="windows"]').hidden = tipo !== 'windows';
+  block.querySelector('[data-campo="red"]').hidden = tipo !== 'red';
+}
+
+function leerImpresora(destino) {
+  const v = (campo) => document.getElementById(`prn-${destino}-${campo}`);
+  return {
+    tipo: v('tipo')?.value || 'ninguna',
+    nombre: v('nombre')?.value || printConfig?.[destino]?.nombre || '',
+    ip: v('ip')?.value.trim() || '',
+    puerto: Number(v('puerto')?.value) || 9100,
+    ancho: Number(v('ancho')?.value) || 80,
+    copias: Number(v('copias')?.value) || 1,
+    auto: destino === 'cocina' ? !!v('auto')?.checked : true,
+  };
+}
+
+async function guardarImpresoras({ silencioso = false } = {}) {
+  const body = { cocina: leerImpresora('cocina'), caja: leerImpresora('caja') };
+  for (const [destino, c] of Object.entries(body)) {
+    if (c.tipo === 'red' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(c.ip)) {
+      showToast(`Escribe la IP de la impresora de ${destino} (ej. 192.168.1.120)`, 'error');
+      return false;
+    }
+    if (c.tipo === 'windows' && !c.nombre) {
+      showToast(`Elige la impresora de ${destino}`, 'error');
+      return false;
+    }
+  }
+  try {
+    const res = await fetch('/api/config/print', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await apiError(res));
+    printConfig = await res.json();
+    if (!silencioso) showToast('Impresoras guardadas', 'success');
+    return true;
+  } catch (e) {
+    showToast(e.message || 'No se pudieron guardar las impresoras', 'error');
+    return false;
+  }
+}
+
+async function probarImpresora(destino) {
+  if (!(await guardarImpresoras({ silencioso: true }))) return;
+  const L = [];
+  L.push({ tipo: 'texto', texto: 'PRUEBA DE IMPRESION', alinear: 'centro', tam: 'grande', negrita: true });
+  L.push({ tipo: 'texto', texto: destino === 'cocina' ? 'Impresora de COCINA' : 'Impresora de CAJA', alinear: 'centro', tam: 'alto', negrita: true });
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'fila', izq: '1 Montados', der: '$85.00' });
+  L.push({ tipo: 'texto', texto: '   Asado · sin cebolla' });
+  L.push({ tipo: 'fila', izq: 'Acentos: áéíóú ñ ¿? ¡!', der: 'OK' });
+  L.push({ tipo: 'linea' });
+  L.push({ tipo: 'texto', texto: `${state.settings.restaurantName || 'Mesana'} · ${fechaCorta()} ${horaCorta()}`, alinear: 'centro' });
+  const ok = await imprimirDocumento(destino, { lineas: L });
+  if (ok) showToast('Prueba enviada a la impresora', 'success');
+}
+
+function renderKitchenSettings() {
+  const box = document.getElementById('kitchenCardBody');
+  if (!box) return;
+  if (!kitchenConfig) {
+    box.innerHTML = '<div class="prn-note">No se pudo leer la configuración del monitor.</div>';
+    return;
+  }
+  const k = kitchenConfig;
+  box.innerHTML = `
+    <p class="prn-intro">Una pantalla para la cocina con cada comanda, el tiempo que lleva y un botón de <strong>Listo</strong>. Cuando la cocina la marca, aquí en caja te avisa. Funciona junto con la impresora o sin ella.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-primary btn-sm" onclick="abrirMonitorCocina()">Abrir monitor en esta computadora</button>
+    </div>
+    <label class="prn-check" style="margin-bottom:8px">
+      <input type="checkbox" ${k.red ? 'checked' : ''} onchange="cambiarMonitorRed(this.checked)">
+      Permitir una tablet o pantalla de la cocina en la misma red (WiFi)
+    </label>
+    ${k.red ? `
+      <div class="kds-acceso">
+        <div>En la tablet abre el navegador y entra a:</div>
+        ${(k.urlsRed || []).map((u) => `<div class="kds-url">${esc(u)}</div>`).join('') || '<div class="prn-note">No se detectó la red de esta computadora.</div>'}
+        <div style="margin-top:8px">Código de cocina: <span class="kds-codigo">${esc(k.codigo)}</span>
+          <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="nuevoCodigoCocina()">Cambiar código</button></div>
+        <div class="prn-note">Si Windows pregunta si permites el acceso a la red, elige <strong>Redes privadas</strong> y da clic en Permitir.</div>
+      </div>` : ''}`;
+}
+
+async function abrirMonitorCocina() {
+  if (!kitchenConfig) return;
+  if (window.mesanaDesktop?.openKitchen) {
+    await window.mesanaDesktop.openKitchen(kitchenConfig.urlLocal);
+  } else {
+    window.open(kitchenConfig.urlLocal, '_blank');
+  }
+}
+
+async function cambiarMonitorRed(red) {
+  await fetch('/api/config/kitchen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ red }) });
+  await loadPrintSettings();
+  showToast(red ? 'Monitor disponible en la red del restaurante' : 'Monitor solo en esta computadora', 'success');
+}
+
+async function nuevoCodigoCocina() {
+  if (!confirm('Las tablets que ya están conectadas tendrán que escribir el código nuevo. ¿Cambiarlo?')) return;
+  await fetch('/api/config/kitchen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nuevoCodigo: true }) });
+  await loadPrintSettings();
+}

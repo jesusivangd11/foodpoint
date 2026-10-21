@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101712">
+<title>Mesana · Cocina</title>
+<link rel="stylesheet" href="/assets/fonts/fonts.css">
+<style>
+  /* Monitor de cocina: oscuro y de alto contraste (se lee de lejos, con vapor y prisa). */
+  :root {
+    --bg: #0E1511; --panel: #17221B; --card: #1C2A21; --line: #2C3D32;
+    --ink: #F1EEE5; --muted: #93A296; --sage: #5BA66F; --sage-2: #7BC290;
+    --amber: #E3A94F; --red: #E2604A; --mono: 'Lucida Console', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: 'DM Sans', 'Segoe UI', sans-serif; overflow-x: hidden; }
+  button { font: inherit; cursor: pointer; }
+
+  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; padding: 12px 18px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; min-width: 0; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--sage); display: grid; place-items: center; flex-shrink: 0; }
+  .brand small { display: block; font-weight: 500; font-size: 13px; color: var(--muted); }
+  .brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .counts { display: flex; gap: 8px; margin-left: auto; }
+  .count { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .count b { color: var(--ink); font-family: var(--mono); font-size: 18px; margin-right: 4px; }
+  .clock { font-family: var(--mono); font-size: 22px; min-width: 92px; text-align: right; }
+  .tbtn { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .tbtn:hover { border-color: var(--sage); }
+  .tbtn.on { background: var(--sage); border-color: var(--sage); color: #0E1511; }
+
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; padding: 16px 18px 90px; align-items: start; }
+  .empty { grid-column: 1 / -1; text-align: center; padding: 18vh 20px; color: var(--muted); }
+  .empty strong { display: block; font-size: 30px; color: var(--ink); margin-bottom: 8px; }
+
+  .tk { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 10px 30px -18px rgba(0,0,0,.8); }
+  .tk.nuevo { animation: llega 1.2s ease-out 2; }
+  @keyframes llega { 0%, 100% { box-shadow: 0 0 0 0 rgba(123,194,144,0); } 40% { box-shadow: 0 0 0 6px rgba(123,194,144,.55); } }
+  .tk-head { padding: 12px 14px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; border-top: 6px solid var(--sage); }
+  .tk.medio .tk-head { border-top-color: var(--amber); }
+  .tk.tarde .tk-head { border-top-color: var(--red); }
+  .tk-num { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .tk-time { font-family: var(--mono); font-size: 24px; text-align: right; color: var(--sage-2); }
+  .tk.medio .tk-time { color: var(--amber); }
+  .tk.tarde .tk-time { color: var(--red); }
+  .tk-where { font-size: 18px; font-weight: 700; }
+  .tk-meta { font-size: 13px; color: var(--muted); text-align: right; }
+  .tk-kind { grid-column: 1 / -1; justify-self: start; margin-top: 6px; font-size: 13px; font-weight: 800; letter-spacing: .06em; padding: 3px 9px; border-radius: 6px; }
+  .tk-kind.adicional { background: var(--amber); color: #1A1305; }
+  .tk-kind.cancelada { background: var(--red); color: #fff; }
+  .tk-items { list-style: none; padding: 4px 14px 10px; border-top: 1px dashed var(--line); }
+  .tk-item { padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  .tk-item:last-child { border-bottom: 0; }
+  .tk-item .q { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--sage-2); margin-right: 10px; }
+  .tk-item .n { font-size: 21px; font-weight: 700; }
+  .tk-item .v { font-size: 17px; font-weight: 600; color: #E6DFC9; margin: 2px 0 0 38px; }
+  .tk-item .c { font-size: 15.5px; color: var(--muted); margin: 2px 0 0 38px; }
+  .tk-item .nota { display: inline-block; margin: 5px 0 0 38px; background: rgba(227,169,79,.16); color: var(--amber); font-weight: 700; font-size: 15.5px; padding: 3px 8px; border-radius: 6px; }
+  .tk-item.hecho { opacity: .38; }
+  .tk-item.hecho .n, .tk-item.hecho .v { text-decoration: line-through; }
+  .tk.cancel .tk-item .n, .tk.cancel .tk-item .v { text-decoration: line-through; text-decoration-color: var(--red); }
+  .tk-nota { margin: 0 14px 12px; background: rgba(227,169,79,.16); color: var(--amber); border-radius: 10px; padding: 9px 12px; font-weight: 700; font-size: 16.5px; }
+  .tk-btn { margin: 0 12px 12px; border: 0; border-radius: 12px; padding: 16px; font-size: 20px; font-weight: 800; letter-spacing: .02em;
+    background: var(--sage); color: #0E1511; }
+  .tk-btn:hover { background: var(--sage-2); }
+  .tk.cancel .tk-btn { background: var(--red); color: #fff; }
+  .tk.listo { opacity: .55; }
+  .tk.listo .tk-btn { background: transparent; border: 1px solid var(--line); color: var(--ink); font-size: 16px; }
+
+  .snack { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 140%); transition: transform .25s; z-index: 10;
+    background: var(--ink); color: var(--bg); border-radius: 12px; padding: 12px 14px 12px 18px; display: flex; align-items: center; gap: 14px; font-weight: 700; }
+  .snack.show { transform: translate(-50%, 0); }
+  .snack button { background: var(--bg); color: var(--ink); border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 700; }
+  .aviso { position: fixed; inset: auto 18px 18px auto; z-index: 9; background: var(--amber); color: #1A1305; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 800; }
+  .offline { display: none; background: var(--red); color: #fff; text-align: center; padding: 6px; font-weight: 700; }
+  .offline.show { display: block; }
+
+  .login { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+  .login-box { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 28px; text-align: center; }
+  .login-box h1 { font-size: 26px; margin: 14px 0 6px; }
+  .login-box p { color: var(--muted); margin-bottom: 18px; }
+  .login-box input { width: 100%; text-align: center; font-family: var(--mono); font-size: 34px; letter-spacing: .3em; padding: 14px; border-radius: 12px;
+    border: 2px solid var(--line); background: var(--bg); color: var(--ink); outline: none; }
+  .login-box input:focus { border-color: var(--sage); }
+  .login-box button { margin-top: 14px; width: 100%; border: 0; border-radius: 12px; padding: 15px; font-size: 18px; font-weight: 800; background: var(--sage); color: #0E1511; }
+  .login-err { color: var(--red); font-weight: 700; margin-top: 10px; min-height: 1.2em; }
+
+  @media (max-width: 700px) {
+    .top { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+    .counts { order: 3; margin-left: 0; width: 100%; }
+    .clock { margin-left: auto; font-size: 18px; min-width: 0; }
+    .board { padding: 12px 12px 90px; grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(() => {
+  const MEDIO_MIN = 10;   // a partir de aqui la comanda se pinta en ambar
+  const TARDE_MIN = 20;   // y aqui en rojo
+  const app = document.getElementById('app');
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+
+  const params = new URLSearchParams(location.search);
+  let codigo = params.get('codigo') || store.get('mesana-cocina-codigo') || '';
+  let tickets = [];
+  let vistos = null;            // ids ya vistos, para avisar de los nuevos
+  let mostrarListos = false;
+  let sonido = store.get('mesana-cocina-sonido') !== 'no';
+  let audioListo = false;
+  let ultimoListo = null;
+  let snackTimer = null;
+  let desfase = 0;              // diferencia entre el reloj de la caja y el de esta pantalla
+  const hechos = new Set(JSON.parse(store.get('mesana-cocina-hechos') || '[]'));
+
+  function pantallaCodigo(error) {
+    app.innerHTML = `<div class="login"><form class="login-box" id="f">
+      <div class="brand-mark" style="margin:0 auto;width:52px;height:52px;border-radius:14px">${marca(28)}</div>
+      <h1>Monitor de cocina</h1>
+      <p>Escribe el código de 6 dígitos que aparece en Mesana, en Configuración → Monitor de cocina.</p>
+      <input id="c" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="······" autofocus>
+      <button>Entrar</button>
+      <div class="login-err">${error ? esc(error) : ''}</div>
+    </form></div>`;
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      codigo = document.getElementById('c').value.trim();
+      store.set('mesana-cocina-codigo', codigo);
+      cargar(true);
+    });
+  }
+
+  function marca(size) {
+    return `<svg width="${size}" height="${size}" fill="none" viewBox="0 0 24 24"><path d="M6.5 16.5V8L12 13.5L17.5 8V16.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="4.8" r="1.05" fill="#fff"/></svg>`;
+  }
+
+  async function api(ruta, opciones) {
+    const res = await fetch(ruta + (ruta.includes('?') ? '&' : '?') + 'codigo=' + encodeURIComponent(codigo), opciones);
+    if (res.status === 401) throw Object.assign(new Error('Código incorrecto'), { auth: true });
+    if (!res.ok) throw new Error('Error ' + res.status);
+    return res.json();
+  }
+
+  let restaurante = 'Mesana';
+  let primeraVez = true;
+  async function cargar(desdeLogin) {
+    try {
+      const data = await api('/api/tickets');
+      store.set('mesana-cocina-codigo', codigo);
+      desfase = new Date(data.ahora).getTime() - Date.now();
+      restaurante = data.restaurante;
+      const nuevos = vistos ? data.tickets.filter((t) => !vistos.has(t.id) && t.status === 'pendiente') : [];
+      vistos = new Set(data.tickets.map((t) => t.id));
+      tickets = data.tickets;
+      if (primeraVez || desdeLogin) { armarPantalla(); primeraVez = false; }
+      document.querySelector('.offline')?.classList.remove('show');
+      pintar(new Set(nuevos.map((t) => t.id)));
+      if (nuevos.length) campana();
+    } catch (e) {
+      if (e.auth) { primeraVez = true; return pantallaCodigo(desdeLogin || codigo ? 'Código incorrecto' : ''); }
+      document.querySelector('.offline')?.classList.add('show');
+    }
+  }
+
+  function armarPantalla() {
+    app.innerHTML = `
+      <div class="offline">Sin conexión con la caja. Reintentando…</div>
+      <header class="top">
+        <div class="brand"><span class="brand-mark">${marca(20)}</span><div style="min-width:0"><span id="rest"></span><small>Cocina</small></div></div>
+        <div class="counts">
+          <div class="count"><b id="nPend">0</b>en preparación</div>
+          <button class="tbtn" id="bListos">Listos <b id="nListos" style="font-family:var(--mono)">0</b></button>
+        </div>
+        <button class="tbtn ${sonido ? 'on' : ''}" id="bSonido" title="Sonido al llegar una comanda">🔔</button>
+        <button class="tbtn" id="bFull" title="Pantalla completa">⛶</button>
+        <div class="clock" id="reloj"></div>
+      </header>
+      <main class="board" id="board"></main>
+      <div class="snack" id="snack"><span id="snackTxt"></span><button id="snackUndo">Regresar</button></div>
+      ${!audioListo && sonido ? '<button class="aviso" id="bAudio">Toca aquí para activar el sonido</button>' : ''}`;
+    document.getElementById('bListos').onclick = () => { mostrarListos = !mostrarListos; pintar(); };
+    document.getElementById('bSonido').onclick = (e) => {
+      sonido = !sonido; store.set('mesana-cocina-sonido', sonido ? 'si' : 'no');
+      e.currentTarget.classList.toggle('on', sonido);
+      if (sonido) activarAudio();
+    };
+    document.getElementById('bFull').onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.();
+    };
+    document.getElementById('snackUndo').onclick = deshacer;
+    const ba = document.getElementById('bAudio');
+    if (ba) ba.onclick = () => { activarAudio(); ba.remove(); };
+  }
+
+  let ctx = null;
+  function activarAudio() {
+    try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); audioListo = true; } catch (e) {}
+  }
+  document.addEventListener('pointerdown', () => { if (sonido && !audioListo) { activarAudio(); document.getElementById('bAudio')?.remove(); } }, { once: true });
+
+  function campana() {
+    if (!sonido || !ctx) return;
+    [660, 880, 990].forEach((f, i) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      const t0 = ctx.currentTime + i * 0.18;
+      o.frequency.value = f; o.type = 'triangle';
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+      o.connect(g).connect(ctx.destination); o.start(t0); o.stop(t0 + 0.5);
+    });
+  }
+
+  function minutos(t) { return Math.max(0, (Date.now() + desfase - new Date(t.createdAt).getTime()) / 60000); }
+  function reloj(min) { const m = Math.floor(min); const s = Math.floor((min - m) * 60); return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
+
+  function tarjeta(t, nuevo) {
+    const min = minutos(t);
+    const listo = t.status === 'listo';
+    const estado = listo ? 'listo' : min >= TARDE_MIN ? 'tarde' : min >= MEDIO_MIN ? 'medio' : '';
+    const cancel = t.kind === 'cancelada';
+    const items = (t.items || []).map((it, i) => {
+      const clave = `${t.id}:${i}`;
+      return `<li class="tk-item ${hechos.has(clave) ? 'hecho' : ''}" data-clave="${clave}">
+        <span class="q">${esc(it.qty)}</span><span class="n">${esc(it.name)}</span>
+        ${it.variantLabel ? `<div class="v">${esc(it.variantLabel)}</div>` : ''}
+        ${(it.comboItems || []).map((ci) => `<div class="c">· ${esc(ci.qty)} ${esc(ci.name)}${ci.variantLabel ? ` <b>(${esc(ci.variantLabel)})</b>` : ''}</div>`).join('')}
+        ${it.notes ? `<div class="nota">${esc(it.notes)}</div>` : ''}
+      </li>`;
+    }).join('');
+    const hora = new Date(t.createdAt).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+    return `<article class="tk ${estado} ${cancel ? 'cancel' : ''} ${nuevo ? 'nuevo' : ''}" data-id="${t.id}">
+      <div class="tk-head">
+        <div class="tk-num">#${esc(t.ticketNumber)}</div>
+        <div class="tk-time" data-reloj="${t.id}">${listo ? '✓' : reloj(min)}</div>
+        <div class="tk-where">${t.type === 'llevar' ? 'Para llevar' : esc(t.mesa || 'Comedor')}${t.type !== 'llevar' && t.comensales ? ` · ${esc(t.comensales)} pers.` : ''}</div>
+        <div class="tk-meta">${esc(hora)} · ${esc(t.waiter || '')}</div>
+        ${t.kind !== 'nueva' ? `<div class="tk-kind ${t.kind}">${t.kind === 'adicional' ? 'ADICIONAL' : 'CANCELAR ESTO'}</div>` : ''}
+      </div>
+      <ul class="tk-items">${items}</ul>
+      ${t.notes ? `<div class="tk-nota">${esc(t.notes)}</div>` : ''}
+      <button class="tk-btn" data-accion="${listo ? 'regresar' : 'listo'}" data-id="${t.id}">${listo ? 'Regresar a preparación' : cancel ? 'Enterado' : 'Listo ✓'}</button>
+    </article>`;
+  }
+
+  function pintar(nuevos = new Set()) {
+    const board = document.getElementById('board');
+    if (!board) return;
+    document.getElementById('rest').textContent = restaurante;
+    const pend = tickets.filter((t) => t.status === 'pendiente');
+    const listos = tickets.filter((t) => t.status === 'listo').sort((a, b) => (b.readyAt || '').localeCompare(a.readyAt || ''));
+    document.getElementById('nPend').textContent = pend.filter((t) => t.kind !== 'cancelada').length;
+    document.getElementById('nListos').textContent = listos.length;
+    document.getElementById('bListos').classList.toggle('on', mostrarListos);
+    const lista = mostrarListos ? listos : pend;
+    board.innerHTML = lista.length
+      ? lista.map((t) => tarjeta(t, nuevos.has(t.id))).join('')
+      : `<div class="empty"><strong>${mostrarListos ? 'Nada listo en los últimos 15 minutos' : 'Sin comandas pendientes'}</strong>${mostrarListos ? '' : 'Las comandas nuevas aparecen aquí solas.'}</div>`;
+  }
+
+  // Tocar un platillo lo tacha (solo en esta pantalla), para llevar la cuenta.
+  document.addEventListener('click', async (e) => {
+    const item = e.target.closest('.tk-item');
+    if (item) {
+      const k = item.dataset.clave;
+      hechos.has(k) ? hechos.delete(k) : hechos.add(k);
+      item.classList.toggle('hecho');
+      store.set('mesana-cocina-hechos', JSON.stringify([...hechos].slice(-400)));
+      return;
+    }
+    const btn = e.target.closest('.tk-btn');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    const accion = btn.dataset.accion;
+    btn.disabled = true;
+    try {
+      await api(`/api/tickets/${id}/${accion}`, { method: 'POST' });
+      const t = tickets.find((x) => x.id === id);
+      if (t) {
+        t.status = accion === 'listo' ? 'listo' : 'pendiente';
+        t.readyAt = accion === 'listo' ? new Date(Date.now() + desfase).toISOString() : null;
+      }
+      if (accion === 'listo') {
+        ultimoListo = id;
+        avisar(`Orden #${t ? t.ticketNumber : ''} marcada como lista`);
+      }
+      pintar();
+    } catch (err) {
+      btn.disabled = false;
+      avisar('No se pudo guardar. Revisa la conexión.');
+    }
+  });
+
+  function avisar(texto) {
+    const snack = document.getElementById('snack');
+    if (!snack) return;
+    document.getElementById('snackTxt').textContent = texto;
+    document.getElementById('snackUndo').style.display = ultimoListo ? '' : 'none';
+    snack.classList.add('show');
+    clearTimeout(snackTimer);
+    snackTimer = setTimeout(() => { snack.classList.remove('show'); ultimoListo = null; }, 6000);
+  }
+
+  async function deshacer() {
+    if (!ultimoListo) return;
+    const id = ultimoListo;
+    ultimoListo = null;
+    document.getElementById('snack').classList.remove('show');
+    try {
+      await api(`/api/tickets/${id}/regresar`, { method: 'POST' });
+      const t = tickets.find((x) => x.id === id);
+      if (t) { t.status = 'pendiente'; t.readyAt = null; }
+      pintar();
+    } catch (e) {}
+  }
+
+  // Reloj y cronometros cada segundo, sin redibujar todo.
+  setInterval(() => {
+    const r = document.getElementById('reloj');
+    if (r) r.textContent = new Date(Date.now() + desfase).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+    tickets.forEach((t) => {
+      if (t.status !== 'pendiente') return;
+      const el = document.querySelector(`[data-reloj="${t.id}"]`);
+      if (!el) return;
+      const min = minutos(t);
+      el.textContent = reloj(min);
+      const card = el.closest('.tk');
+      card.classList.toggle('medio', min >= MEDIO_MIN && min < TARDE_MIN);
+      card.classList.toggle('tarde', min >= TARDE_MIN);
+    });
+  }, 1000);
+
+  if (codigo) cargar(true); else pantallaCodigo();
+  setInterval(() => { if (codigo && document.getElementById('board')) cargar(false); }, 3000);
+})();
+</script>
+</body>
+</html>

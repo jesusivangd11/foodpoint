@@ -68,6 +68,7 @@
       <a href="#vender">Vender</a>
       <a href="#combos">Combos</a>
       <a href="#cocina">Comandas y cobro</a>
+      <a href="#impresion">Impresoras y cocina</a>
       <a href="#administrar">Administrar</a>
       <a href="#numeros">Dashboard y reportes</a>
       <a href="#respaldos">Respaldos</a>
@@ -169,8 +170,42 @@
         </article>
       </section>
 
+      <section class="help-group" id="impresion">
+        <h2><span>05</span>Impresoras y monitor de cocina</h2>
+        <p>Así trabaja la cocina: la comanda llega impresa y en pantalla, y la caja se entera cuando está lista.</p>
+        <article class="help-article">
+          <h3>Conectar las impresoras</h3>
+          <ol>
+            <li>Ve a <strong>Configuración → Impresoras</strong>. Hay dos: <strong>Cocina</strong> (comandas) y <strong>Caja</strong> (ticket del cliente).</li>
+            <li>Elige el tipo: <strong>USB o instalada en Windows</strong> (escoge la impresora en la lista) o <strong>De red (IP)</strong> (escribe la IP que imprime la propia impresora al encenderla; el puerto casi siempre es 9100).</li>
+            <li>Elige el papel: 80 mm o 58 mm.</li>
+            <li>Da clic en <strong>Imprimir prueba</strong>. Si sale con acentos y la ñ bien, da clic en <strong>Guardar impresoras</strong>.</li>
+          </ol>
+          <p class="tip"><strong>Consejo:</strong> a la impresora de red asígnale una IP fija en tu módem, para que no cambie cuando se apague la luz.</p>
+        </article>
+        <article class="help-article">
+          <h3>Qué se imprime y cuándo</h3>
+          <ul>
+            <li><strong>COCINA:</strong> al enviar la comanda, con mesa, personas, mesero, variantes, piezas del combo y notas. Sin precios.</li>
+            <li><strong>ADICIONAL:</strong> si editas la comanda y agregas productos, solo con lo nuevo.</li>
+            <li><strong>CANCELAR:</strong> si quitas productos o cancelas la comanda, para que no se preparen.</li>
+            <li><strong>Ticket del cliente:</strong> al cobrar con <kbd>F1</kbd>, en la impresora de caja, con pagos y cambio. La <strong>cuenta</strong> sale desde el botón Ticket antes de cobrar.</li>
+          </ul>
+          <p>¿Se atoró el papel? En la tarjeta de la comanda usa <strong>Reimprimir</strong>, y en Ventas el botón <strong>Imprimir ticket</strong>.</p>
+        </article>
+        <article class="help-article">
+          <h3>Monitor de cocina</h3>
+          <p>Una pantalla para la cocina con cada comanda, el tiempo que lleva (verde, ámbar a los 10 minutos y rojo a los 20) y un botón <strong>Listo</strong>. Al marcarla, en caja aparece “Listo para entregar” con un aviso y sonido.</p>
+          <ul>
+            <li><strong>Segunda pantalla conectada a la misma computadora:</strong> en Configuración → Monitor de cocina da clic en <strong>Abrir monitor en esta computadora</strong>; se abre en pantalla completa en el segundo monitor.</li>
+            <li><strong>Tablet o pantalla en la cocina:</strong> activa “Permitir una tablet…”, abre en la tablet la dirección que aparece (por ejemplo <kbd>http://192.168.1.50:4174</kbd>) y escribe el código de 6 dígitos. Deben estar en la misma red WiFi. Si Windows pregunta, permite el acceso en <strong>Redes privadas</strong>.</li>
+          </ul>
+          <p>En el monitor, toca un platillo para tacharlo mientras lo preparas. Si marcas una orden como lista por error, usa <strong>Regresar</strong>.</p>
+        </article>
+      </section>
+
       <section class="help-group" id="administrar">
-        <h2><span>05</span>Administrar</h2>
+        <h2><span>06</span>Administrar</h2>
         <article class="help-article">
           <h3>Productos y variantes</h3>
           <p>En <strong>Productos</strong> agrega nombre, categoría, precio y costo (el costo sirve para calcular tu ganancia). Con <strong>Grupo de variante</strong> creas, por ejemplo, “Guiso” con sus opciones y cuántas se pueden elegir.</p>
@@ -191,7 +226,7 @@
       </section>
 
       <section class="help-group" id="numeros">
-        <h2><span>06</span>Dashboard y reportes</h2>
+        <h2><span>07</span>Dashboard y reportes</h2>
         <article class="help-article">
           <h3>Dashboard</h3>
           <p>El <strong>corte de hoy</strong> separa lo que debe haber en caja (efectivo, tarjeta, transferencia) de lo que te deben las plataformas. Abajo ves ventas de la semana, ventas por categoría y lo más vendido.</p>
@@ -204,7 +239,7 @@
       </section>
 
       <section class="help-group" id="respaldos">
-        <h2><span>07</span>Respaldos</h2>
+        <h2><span>08</span>Respaldos</h2>
         <article class="help-article">
           <h3>Tus datos están a salvo</h3>
           <p>Mesana guarda tus datos en tu computadora, en una carpeta aparte del programa (<kbd>%LOCALAPPDATA%\Mesana</kbd>). Hace un respaldo al abrir y cada hora, y conserva los últimos 30.</p>
@@ -214,7 +249,7 @@
       </section>
 
       <section class="help-group" id="actualizar">
-        <h2><span>08</span>Actualizaciones</h2>
+        <h2><span>09</span>Actualizaciones</h2>
         <article class="help-article">
           <h3>Cómo se actualiza Mesana</h3>
           <p>No tienes que hacer nada. Mesana revisa cada pocas horas si hay una versión nueva y la descarga en segundo plano. Cuando está lista aparece arriba el aviso <strong>“Mesana X está lista”</strong>:</p>
@@ -229,7 +264,7 @@
       </section>
 
       <section class="help-group" id="licencia">
-        <h2><span>09</span>Licencia</h2>
+        <h2><span>10</span>Licencia</h2>
         <article class="help-article">
           <h3>Prueba y activación</h3>
           <p>Mesana funciona completo durante <strong>30 días</strong>. Al terminar te pide una clave de licencia. Tus datos no se pierden: al activar sigues justo donde te quedaste.</p>
@@ -244,7 +279,7 @@
       </section>
 
       <section class="help-group" id="atajos">
-        <h2><span>10</span>Atajos de teclado</h2>
+        <h2><span>11</span>Atajos de teclado</h2>
         <article class="help-article">
           <h3>Vende sin soltar el teclado</h3>
           <p>La barra de abajo en Mesana siempre muestra estas teclas. También te mueves con las flechas y confirmas con <kbd>Enter</kbd>.</p>

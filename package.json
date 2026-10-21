@@ -1,6 +1,6 @@
 {
   "name": "mesana",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "description": "Mesana - Punto de venta para restaurante (app de escritorio)",
   "main": "main.js",
   "author": "Jesus",
@@ -34,6 +34,8 @@
       "preload.js",
       "server.js",
       "license.js",
+      "cocina.html",
+      "printing.js",
       "index.html",
       "mesana.ico",
       "assets/**/*",

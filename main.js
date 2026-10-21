@@ -75,6 +75,71 @@ ipcMain.handle('update:install', () => {
   return true;
 });
 
+// --- Impresoras de Windows (USB o compartidas) ---
+// La pagina arma el ticket en HTML; aqui se imprime en silencio, sin el dialogo
+// de Windows, en la impresora elegida y al ancho del rollo (80 o 58 mm).
+ipcMain.handle('printer:list', async () => {
+  if (!mainWindow) return [];
+  const list = await mainWindow.webContents.getPrintersAsync();
+  return list.map((p) => ({ name: p.name, displayName: p.displayName || p.name, isDefault: !!p.isDefault }));
+});
+
+ipcMain.handle('printer:print', async (_event, { deviceName, html, anchoMm = 80, copias = 1 }) => {
+  if (!deviceName) throw new Error('Elige una impresora en Configuración.');
+  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } });
+  try {
+    await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    const alturaPx = await win.webContents.executeJavaScript('document.documentElement.scrollHeight', true).catch(() => 1200);
+    const micras = (mm) => Math.round(mm * 1000);
+    const altoMm = Math.max(60, Math.ceil(alturaPx * 25.4 / 96) + 12);
+    await new Promise((resolve, reject) => {
+      win.webContents.print({
+        silent: true,
+        deviceName,
+        printBackground: true,
+        copies: Math.max(1, Math.min(5, Number(copias) || 1)),
+        margins: { marginType: 'none' },
+        pageSize: { width: micras(Number(anchoMm) === 58 ? 58 : 80), height: micras(altoMm) },
+      }, (ok, motivo) => (ok ? resolve() : reject(new Error(motivo || 'La impresora no aceptó el trabajo.'))));
+    });
+    return true;
+  } finally {
+    win.destroy();
+  }
+});
+
+// --- Monitor de cocina en esta misma computadora ---
+// Se abre en la segunda pantalla si hay una conectada (la que mira la cocina).
+let kitchenWindow = null;
+ipcMain.handle('kitchen:open', (_event, url) => {
+  if (!/^http:\/\/127\.0\.0\.1:\d+\/\?codigo=\d+$/.test(String(url))) return false;
+  if (kitchenWindow && !kitchenWindow.isDestroyed()) {
+    kitchenWindow.focus();
+    return true;
+  }
+  const { screen } = require('electron');
+  const pantallas = screen.getAllDisplays();
+  const principal = screen.getPrimaryDisplay();
+  const destino = pantallas.find((d) => d.id !== principal.id) || principal;
+  kitchenWindow = new BrowserWindow({
+    x: destino.bounds.x + 40,
+    y: destino.bounds.y + 40,
+    width: 1280,
+    height: 800,
+    title: 'Mesana · Cocina',
+    icon: path.join(__dirname, 'mesana.ico'),
+    autoHideMenuBar: true,
+    backgroundColor: '#101712',
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  kitchenWindow.setMenu(null);
+  if (destino.id !== principal.id) kitchenWindow.setFullScreen(true);
+  else kitchenWindow.maximize();
+  kitchenWindow.on('closed', () => { kitchenWindow = null; });
+  kitchenWindow.loadURL(url);
+  return true;
+});
+
 // --- Tamaño de la interfaz (zoom) ---
 // La PC del trabajo tiene pantalla grande y el programa se veía chico y lejano.
 // Arranca un poco ampliado y se puede ajustar con Ctrl + / Ctrl - / Ctrl 0.

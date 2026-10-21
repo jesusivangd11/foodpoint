@@ -122,6 +122,26 @@ precios, novedades), `ayuda.html` (guía de uso con buscador) y `licencia.html`.
 
 ---
 
+## Versión 3.2.2 — impresión real y monitor de cocina
+
+Antes de esta versión **no se imprimía nada**: el botón "Enviar a impresora" solo
+mostraba un aviso y las IPs de impresoras se guardaban sin usarse.
+
+- **Impresoras** (Configuración → Impresoras): una de *cocina* y una de *caja*.
+  Tipo USB/Windows (Electron imprime en silencio, `main.js` → `printer:print`) o de
+  red IP (ESC/POS por TCP 9100, `printing.js`). Papel de 80 o 58 mm, copias, prueba.
+- **Qué se imprime:** COCINA al enviar; ADICIONAL solo con lo agregado al editar;
+  CANCELAR con lo quitado o al cancelar; ticket del cliente al cobrar con F1; la
+  cuenta desde el botón Ticket; reimpresión desde la comanda y desde Ventas.
+- **Monitor de cocina** (`cocina.html`, servidor aparte en el puerto **4174**, con
+  código de 6 dígitos): tickets con cronómetro (ámbar a 10 min, rojo a 20), botón
+  Listo/Enterado, deshacer, tachar platillos, sonido. Se abre en el 2.º monitor o en
+  una tablet de la misma red (opción "Permitir una tablet…"; Windows pedirá permiso
+  de firewall en *Redes privadas*).
+- **Tickets de cocina** en la tabla `kitchen_tickets`, aparte de `orders`, porque al
+  cobrar la comanda se borra y la cocina debe seguir viéndola hasta marcarla lista.
+  La caja consulta `/api/kitchen/estado` cada 5 s y avisa "¡Orden #N lista!".
+
 ## Versión 3.2.0 — qué cambia
 
 Instalador: `dist-installer\Mesana-Setup-3.2.0.exe` (el nombre ya no lleva espacios).

@@ -250,6 +250,31 @@ function createTables() {
       if (!names.includes('customName')) db.run("ALTER TABLE parked_orders ADD COLUMN customName TEXT");
     });
 
+    // Configuracion libre en clave/valor (impresoras, monitor de cocina).
+    db.run(`CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )`);
+
+    // Tickets de cocina: cada envio, adicional o cancelacion de una comanda.
+    // Viven aparte de "orders" porque al cobrar la comanda se borra, y la cocina
+    // tiene que seguir viendo el pedido hasta marcarlo como listo.
+    db.run(`CREATE TABLE IF NOT EXISTS kitchen_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orderId INTEGER,
+      ticketNumber INTEGER,
+      kind TEXT NOT NULL,
+      type TEXT,
+      mesa TEXT,
+      comensales INTEGER,
+      waiter TEXT,
+      notes TEXT,
+      items TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pendiente',
+      createdAt TEXT NOT NULL,
+      readyAt TEXT
+    )`);
+
     // Sales records table
     db.run(`CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -793,6 +818,218 @@ app.post('/api/backups/restore', (req, res) => {
   }
 });
 
+// ===================== IMPRESORAS Y COCINA =====================
+const { imprimirEnRed } = require('./printing');
+const crypto = require('crypto');
+const os = require('os');
+
+const KITCHEN_PORT = Number(process.env.MESANA_KITCHEN_PORT || 4174);
+const PRINT_DEFAULT = {
+  cocina: { tipo: 'ninguna', nombre: '', ip: '', puerto: 9100, ancho: 80, copias: 1, auto: true },
+  caja: { tipo: 'ninguna', nombre: '', ip: '', puerto: 9100, ancho: 80, copias: 1, auto: true },
+};
+
+function getConfig(key, fallback) {
+  return new Promise((resolve) => {
+    db.get('SELECT value FROM config WHERE key = ?', [key], (err, row) => {
+      if (err || !row) return resolve(fallback);
+      try { resolve(JSON.parse(row.value)); } catch (e) { resolve(fallback); }
+    });
+  });
+}
+
+function setConfig(key, value) {
+  return new Promise((resolve, reject) => {
+    db.run('INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      [key, JSON.stringify(value)], (err) => (err ? reject(err) : resolve(value)));
+  });
+}
+
+async function getPrintConfig() {
+  const saved = await getConfig('print', {});
+  return {
+    cocina: { ...PRINT_DEFAULT.cocina, ...(saved.cocina || {}) },
+    caja: { ...PRINT_DEFAULT.caja, ...(saved.caja || {}) },
+  };
+}
+
+async function getKitchenConfig() {
+  let cfg = await getConfig('kitchen', null);
+  if (!cfg || !cfg.codigo) {
+    cfg = { red: false, ...(cfg || {}), codigo: String(crypto.randomInt(100000, 1000000)) };
+    await setConfig('kitchen', cfg);
+  }
+  return cfg;
+}
+
+function lanAddresses() {
+  const out = [];
+  Object.values(os.networkInterfaces()).forEach((list) => (list || []).forEach((i) => {
+    if (i.family === 'IPv4' && !i.internal) out.push(i.address);
+  }));
+  return out;
+}
+
+app.get('/api/config/print', async (req, res) => res.json(await getPrintConfig()));
+
+app.put('/api/config/print', async (req, res) => {
+  try {
+    const actual = await getPrintConfig();
+    const body = req.body || {};
+    const limpio = {};
+    ['cocina', 'caja'].forEach((d) => {
+      const v = { ...actual[d], ...(body[d] || {}) };
+      limpio[d] = {
+        tipo: ['ninguna', 'windows', 'red'].includes(v.tipo) ? v.tipo : 'ninguna',
+        nombre: String(v.nombre || ''),
+        ip: String(v.ip || '').trim(),
+        puerto: Number(v.puerto) || 9100,
+        ancho: Number(v.ancho) === 58 ? 58 : 80,
+        copias: Math.max(1, Math.min(3, Number(v.copias) || 1)),
+        auto: v.auto !== false,
+      };
+    });
+    res.json(await setConfig('print', limpio));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Impresion directa a una termica de red (ESC/POS). Las USB/Windows van por Electron.
+app.post('/api/print/red', async (req, res) => {
+  const { ip, puerto, documento, copias } = req.body || {};
+  try {
+    await imprimirEnRed({ host: ip, port: puerto, documento, copias });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.get('/api/config/kitchen', async (req, res) => {
+  const cfg = await getKitchenConfig();
+  res.json({
+    ...cfg,
+    puerto: KITCHEN_PORT,
+    activo: !!kitchenServer,
+    urlLocal: `http://127.0.0.1:${KITCHEN_PORT}/?codigo=${cfg.codigo}`,
+    urlsRed: cfg.red ? lanAddresses().map((ip) => `http://${ip}:${KITCHEN_PORT}/`) : [],
+  });
+});
+
+app.put('/api/config/kitchen', async (req, res) => {
+  const actual = await getKitchenConfig();
+  const body = req.body || {};
+  const next = {
+    red: body.red !== undefined ? !!body.red : actual.red,
+    codigo: body.nuevoCodigo ? String(crypto.randomInt(100000, 1000000)) : actual.codigo,
+  };
+  await setConfig('kitchen', next);
+  try { await startKitchenServer(); } catch (e) { return res.status(500).json({ error: e.message }); }
+  res.json({ ok: true });
+});
+
+app.post('/api/kitchen/tickets', (req, res) => {
+  const b = req.body || {};
+  if (!Array.isArray(b.items) || !b.items.length) return res.status(400).json({ error: 'Ticket sin productos' });
+  const kind = ['nueva', 'adicional', 'cancelada'].includes(b.kind) ? b.kind : 'nueva';
+  db.run(`INSERT INTO kitchen_tickets (orderId, ticketNumber, kind, type, mesa, comensales, waiter, notes, items, status, createdAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+    [b.orderId || null, b.ticketNumber || null, kind, b.type || null, b.mesa || null, b.comensales || null,
+      b.waiter || null, b.notes || '', JSON.stringify(b.items), new Date().toISOString()],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: this.lastID });
+    });
+});
+
+// Estado de cocina por comanda, para que la caja sepa cuando ya esta lista.
+app.get('/api/kitchen/estado', (req, res) => {
+  const desde = new Date(Date.now() - 16 * 3600e3).toISOString();
+  db.all(`SELECT orderId, ticketNumber, kind, status, readyAt FROM kitchen_tickets
+          WHERE createdAt >= ? AND kind != 'cancelada'`, [desde], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const porOrden = {};
+    rows.forEach((r) => {
+      if (r.orderId == null) return;
+      const e = porOrden[r.orderId] || (porOrden[r.orderId] = { orderId: r.orderId, ticketNumber: r.ticketNumber, pendientes: 0, listos: 0, readyAt: null });
+      if (r.status === 'listo') {
+        e.listos++;
+        if (!e.readyAt || r.readyAt > e.readyAt) e.readyAt = r.readyAt;
+      } else e.pendientes++;
+    });
+    res.json(Object.values(porOrden));
+  });
+});
+
+// --- Servidor del monitor de cocina ---
+// Va en otro puerto para no exponer el resto del sistema: solo sirve la pantalla
+// de cocina y sus tickets, y pide el codigo de 6 digitos de Configuracion.
+// Sin "red" activada solo escucha en esta computadora (segunda pantalla).
+const kitchenApp = express();
+kitchenApp.use(bodyParser.json({ limit: '1mb' }));
+let kitchenServer = null;
+
+async function kitchenAuth(req, res, next) {
+  const cfg = await getKitchenConfig();
+  const enviado = String(req.query.codigo || req.get('x-codigo') || '');
+  const ok = enviado.length === cfg.codigo.length
+    && crypto.timingSafeEqual(Buffer.from(enviado), Buffer.from(cfg.codigo));
+  if (!ok) return res.status(401).json({ error: 'Código incorrecto' });
+  next();
+}
+
+kitchenApp.get('/', (req, res) => res.sendFile(path.join(__dirname, 'cocina.html')));
+kitchenApp.use('/assets/fonts', express.static(path.join(__dirname, 'assets', 'fonts')));
+
+kitchenApp.get('/api/tickets', kitchenAuth, (req, res) => {
+  const desde = new Date(Date.now() - 16 * 3600e3).toISOString();
+  const listosDesde = new Date(Date.now() - 15 * 60e3).toISOString();
+  db.all(`SELECT * FROM kitchen_tickets WHERE createdAt >= ? AND (status = 'pendiente' OR readyAt >= ?)
+          ORDER BY createdAt ASC`, [desde, listosDesde], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    rows.forEach((r) => { try { r.items = JSON.parse(r.items); } catch (e) { r.items = []; } });
+    db.get('SELECT restaurantName FROM settings WHERE id = 1', [], (e2, s) => {
+      res.json({ restaurante: (s && s.restaurantName) || 'Mesana', ahora: new Date().toISOString(), tickets: rows });
+    });
+  });
+});
+
+kitchenApp.post('/api/tickets/:id/listo', kitchenAuth, (req, res) => {
+  db.run(`UPDATE kitchen_tickets SET status = 'listo', readyAt = ? WHERE id = ?`,
+    [new Date().toISOString(), req.params.id], function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ changes: this.changes });
+    });
+});
+
+kitchenApp.post('/api/tickets/:id/regresar', kitchenAuth, (req, res) => {
+  db.run(`UPDATE kitchen_tickets SET status = 'pendiente', readyAt = NULL WHERE id = ?`, [req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ changes: this.changes });
+  });
+});
+
+async function startKitchenServer() {
+  const cfg = await getKitchenConfig();
+  const host = cfg.red ? '0.0.0.0' : '127.0.0.1';
+  if (kitchenServer) {
+    if (kitchenServer.mesanaHost === host) return;
+    await new Promise((r) => kitchenServer.close(() => r()));
+    kitchenServer = null;
+  }
+  await new Promise((resolve) => {
+    const srv = kitchenApp.listen(KITCHEN_PORT, host, () => {
+      srv.mesanaHost = host;
+      kitchenServer = srv;
+      console.log(`Monitor de cocina en http://${host}:${KITCHEN_PORT}`);
+      resolve();
+    });
+    // Si el puerto esta ocupado la venta sigue funcionando; solo falta el monitor.
+    srv.on('error', (e) => { console.error('[cocina] no se pudo abrir el monitor:', e.message); resolve(); });
+  });
+}
+
 // Licencia y version (ver license.js)
 const licenseStore = createLicenseStore(DATA_DIR);
 const APP_VERSION = require('./package.json').version;
@@ -818,6 +1055,8 @@ function start(options = {}) {
   return new Promise((resolve, reject) => {
     const server = app.listen(port, '127.0.0.1', () => {
       console.log(`Server running on http://127.0.0.1:${port}`);
+      // El monitor de cocina espera a que existan las tablas de configuracion.
+      setTimeout(() => startKitchenServer().catch((e) => console.error('[cocina]', e.message)), 1500);
       resolve(server);
     });
     server.on('error', reject);
