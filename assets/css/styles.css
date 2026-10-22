@@ -1,14 +1,12 @@
 /* ===================== THEME VARIABLES ===================== */
 :root {
-  /* Colores de marca FoodPoint (olivo, terracota y crema): se usan en el inicio de
-     sesion y como tema por defecto. Los demas temas los sobrescriben dentro de #app. */
-  --accent: #6E7339;
-  --accent-light: #8D9250;
-  --accent-pale: #D4D6A8;
-  --accent-mist: #F1F1E1;
-  --accent-dark: #4C4F26;
-  --sidebar-bg: #2B2C17;
-  --mint: #C6C98A;
+  --accent: #5BA66F;
+  --accent-light: #7BC290;
+  --accent-pale: #B8E4C5;
+  --accent-mist: #E8F5EC;
+  --accent-dark: #3D7A52;
+  --sidebar-bg: #1F3D29;
+  --mint: #8DD4A1;
   --bg: #F6F4EE;
   --surface: #FFFFFF;
   --stone: #8C8880;
@@ -31,7 +29,6 @@
   --mono: 'Lucida Console', 'Courier New', monospace;
 }
 /* Theme presets - vibrant tones */
-.theme-foodpoint { --accent:#6E7339;--accent-light:#8D9250;--accent-pale:#D4D6A8;--accent-mist:#F1F1E1;--accent-dark:#4C4F26;--sidebar-bg:#2B2C17;--mint:#C6C98A;--amber:#D57749;--amber-light:#E9A07E; }
 .theme-sage    { --accent:#5BA66F;--accent-light:#7BC290;--accent-pale:#B8E4C5;--accent-mist:#E8F5EC;--accent-dark:#3D7A52;--sidebar-bg:#1F3D29;--mint:#8DD4A1; }
 .theme-slate   { --accent:#4A8FC2;--accent-light:#6BAFE0;--accent-pale:#B0D4F0;--accent-mist:#E4F0FA;--accent-dark:#2A6A9A;--sidebar-bg:#142940;--mint:#80BFE0; }
 .theme-terracota{ --accent:#C26A52;--accent-light:#E08570;--accent-pale:#EFB8A8;--accent-mist:#FAEAE3;--accent-dark:#8F4030;--sidebar-bg:#381A12;--mint:#D89685; }

@@ -144,7 +144,7 @@ desarrollo: misma carpeta, accesos nuevos funcionando, app reabierta sola, datos
 
 El nombre de restaurante de fábrica "Mesana" se migra a "FoodPoint" al arrancar.
 Al primer inicio en equipos con ventas aparece una vez el aviso "Mesana ahora se llama
-FoodPoint" con la opción de usar el tema de color nuevo (`theme-foodpoint`).
+FoodPoint". Los colores se quedaron en el verde de siempre (`theme-sage`).
 
 Logo: `assets/img/foodpoint-mark-512.png` (insignia sobre disco crema; el tenedor del logo
 es del mismo crema que el fondo, por eso no puede ir sin disco), `foodpoint.ico` (16–256 px).

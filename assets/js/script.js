@@ -3,7 +3,6 @@ const STORAGE_KEY = 'mesana-pos-state-v2';
 const DEFAULT_TAX_RATE = 16;
 
 const THEMES = [
-  { key: 'theme-foodpoint', color: '#6E7339', label: 'FoodPoint' },
   { key: 'theme-sage', color: '#6B8F71', label: 'Sage' },
   { key: 'theme-slate', color: '#5A7A9A', label: 'Slate' },
   { key: 'theme-terracota', color: '#9A6050', label: 'Terracota' },
@@ -239,7 +238,7 @@ function createDefaultState() {
       currency: 'MXN - Peso Mexicano',
       kitchenPrinter: '192.168.1.101:9100',
       cashPrinter: '192.168.1.102:9100',
-      theme: 'theme-foodpoint',
+      theme: 'theme-sage',
       dailyOrderCounter: 0,
       lastOrderDate: '',
     },
@@ -922,7 +921,7 @@ async function initApp() {
   syncBranding();
   buildNav();
   buildThemeSwitcher();
-  await applyTheme(state.settings.theme || 'theme-foodpoint', true);
+  await applyTheme(state.settings.theme || 'theme-sage', true);
   posCategory = 'Todos';
   productSearch = '';
   salesView = 'today';
@@ -979,6 +978,8 @@ function buildThemeSwitcher() {
 }
 
 async function applyTheme(key, silent) {
+  // El tema olivo de FoodPoint se retiro: quien lo tuviera vuelve al verde.
+  if (!THEMES.some((t) => t.key === key)) key = 'theme-sage';
   const app = document.getElementById('app');
   THEMES.forEach((theme) => app.classList.remove(theme.key));
   app.classList.add(key);
@@ -7356,17 +7357,14 @@ function avisoNuevoNombre() {
     <img class="rebrand-logo" src="assets/img/foodpoint-logo.png" alt="FoodPoint · Punto de venta & sabor">
     <h2>Mesana ahora se llama FoodPoint</h2>
     <p>Es el mismo sistema que ya usas: tus ventas, productos, combos, usuarios, respaldos y configuración siguen exactamente igual. Solo cambiaron el nombre y el logo.</p>
-    <p class="rebrand-sub">¿Quieres usar también los colores nuevos de FoodPoint? Puedes cambiarlos cuando quieras abajo a la izquierda.</p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="cerrarAvisoNombre(false)">Conservar mis colores</button>
-      <button class="btn btn-primary" onclick="cerrarAvisoNombre(true)">Usar colores FoodPoint</button>
+      <button class="btn btn-primary" onclick="cerrarAvisoNombre()">Entendido</button>
     </div>
   </div>`;
   document.body.appendChild(overlay);
 }
 
-async function cerrarAvisoNombre(usarColores) {
+function cerrarAvisoNombre() {
   try { localStorage.setItem('foodpoint-aviso-nombre', '1'); } catch (e) { /* sin almacenamiento */ }
   document.getElementById('avisoNombre')?.remove();
-  if (usarColores) await applyTheme('theme-foodpoint', true);
 }

@@ -371,7 +371,7 @@ function createTables() {
             if (alters === 0) {
               // Insert default settings if not exist
               db.run(`INSERT OR IGNORE INTO settings (id, restaurantName, rfc, address, phone, logoDataUrl, ticketFooter, currency, kitchenPrinter, cashPrinter, theme, dailyOrderCounter, lastOrderDate)
-                       VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-foodpoint', 0, '')`);
+                       VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-sage', 0, '')`);
             }
           };
           if (!columnNames.includes('dailyOrderCounter')) {
@@ -385,7 +385,7 @@ function createTables() {
           if (alters === 0) {
             // Insert default settings if not exist
             db.run(`INSERT OR IGNORE INTO settings (id, restaurantName, rfc, address, phone, logoDataUrl, ticketFooter, currency, kitchenPrinter, cashPrinter, theme, dailyOrderCounter, lastOrderDate)
-                     VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-foodpoint', 0, '')`);
+                     VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-sage', 0, '')`);
           }
         });
       }
