@@ -3,6 +3,7 @@ const STORAGE_KEY = 'mesana-pos-state-v2';
 const DEFAULT_TAX_RATE = 16;
 
 const THEMES = [
+  { key: 'theme-foodpoint', color: '#6E7339', label: 'FoodPoint' },
   { key: 'theme-sage', color: '#6B8F71', label: 'Sage' },
   { key: 'theme-slate', color: '#5A7A9A', label: 'Slate' },
   { key: 'theme-terracota', color: '#9A6050', label: 'Terracota' },
@@ -212,7 +213,7 @@ function createDefaultState() {
   return {
     owner: {
       name: 'Jesus Garcia',
-      email: 'admin@mesana.mx',
+      email: 'admin@foodpoint.mx',
       pass: 'admin123',
       label: 'Propietario',
     },
@@ -229,7 +230,7 @@ function createDefaultState() {
     ],
     combos: [],
     settings: {
-      restaurantName: 'Mesana',
+      restaurantName: 'FoodPoint',
       rfc: 'XAXX010101000',
       address: 'Av. Principal #100, Chihuahua, Chih.',
       phone: '',
@@ -238,7 +239,7 @@ function createDefaultState() {
       currency: 'MXN - Peso Mexicano',
       kitchenPrinter: '192.168.1.101:9100',
       cashPrinter: '192.168.1.102:9100',
-      theme: 'theme-sage',
+      theme: 'theme-foodpoint',
       dailyOrderCounter: 0,
       lastOrderDate: '',
     },
@@ -331,7 +332,7 @@ function migrateLegacyState() {
     if (Array.isArray(legacyEmployees) && legacyEmployees.length) {
       next.employees = legacyEmployees.map((employee, index) => ({
         name: employee.name || `Empleado ${index + 1}`,
-        email: employee.email || `empleado${index + 1}@mesana.mx`,
+        email: employee.email || `empleado${index + 1}@foodpoint.mx`,
         role: employee.role || 'Mesero',
         status: employee.status || 'Activo',
         since: employee.since || formatDateISO(new Date()),
@@ -371,7 +372,7 @@ function normalizeState(raw) {
 function normalizeEmployees(items) {
   return (Array.isArray(items) ? items : []).map((employee, index) => ({
     name: employee.name || `Empleado ${index + 1}`,
-    email: employee.email || `empleado${index + 1}@mesana.mx`,
+    email: employee.email || `empleado${index + 1}@foodpoint.mx`,
     role: employee.role || 'Mesero',
     status: employee.status || 'Activo',
     since: employee.since || formatDateISO(new Date()),
@@ -564,7 +565,13 @@ function formatShortTime(dateValue) {
   });
 }
 
-function getBrandMarkSvg(size, strokeWidth) {
+// Logo de FoodPoint (insignia redonda). El nombre de la funcion se conserva porque
+// se usa en varios lugares; ya no es un SVG sino la imagen de la marca.
+function getBrandMarkSvg(size) {
+  return `<img class="fp-mark" src="assets/img/foodpoint-mark-512.png" alt="FoodPoint" style="width:100%;height:100%">`;
+}
+
+function getBrandMarkSvgAnterior(size, strokeWidth) {
   return `<svg width="${size}" height="${size}" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" stroke="#fff" stroke-width="1.3" opacity="0.45"/><path d="M6.5 16.5V8L12 13.5L17.5 8V16.5" stroke="#fff" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="4.8" r="1.05" fill="#fff"/></svg>`;
 }
 
@@ -915,7 +922,7 @@ async function initApp() {
   syncBranding();
   buildNav();
   buildThemeSwitcher();
-  await applyTheme(state.settings.theme || 'theme-sage', true);
+  await applyTheme(state.settings.theme || 'theme-foodpoint', true);
   posCategory = 'Todos';
   productSearch = '';
   salesView = 'today';
@@ -928,7 +935,7 @@ async function initApp() {
 }
 
 function syncBranding() {
-  const restaurantName = state.settings.restaurantName || 'Mesana';
+  const restaurantName = state.settings.restaurantName || 'FoodPoint';
   document.getElementById('sbName').textContent = restaurantName;
   document.getElementById('brandName').textContent = restaurantName;
   const loginBrandMark = document.getElementById('loginBrandMark');
@@ -6070,7 +6077,7 @@ async function createBackupNow() {
 }
 
 async function restoreBackup(name) {
-  if (!confirm(`Restaurar el respaldo ${name}?\n\nEl sistema se cerrara y debes volver a abrirlo con "Abrir Mesana.cmd".\n\nSe creara un respaldo del estado actual antes de restaurar.`)) return;
+  if (!confirm(`¿Restaurar el respaldo ${name}?\n\nFoodPoint se reiniciará solo con los datos de ese respaldo.\n\nAntes se crea un respaldo del estado actual.`)) return;
   try {
     const res = await fetch('/api/backups/restore', {
       method: 'POST',
@@ -6079,12 +6086,12 @@ async function restoreBackup(name) {
     });
     const data = await res.json();
     if (data.success) {
-      alert('Respaldo restaurado. El servidor se esta cerrando.\n\nVuelve a abrir el sistema con "Abrir Mesana.cmd".');
+      showToast('Respaldo restaurado. FoodPoint se está reiniciando…', 'success');
     } else {
       showToast(data.error || 'No se pudo restaurar', 'error');
     }
   } catch (error) {
-    alert('El servidor se cerro. Vuelve a abrirlo con "Abrir Mesana.cmd".');
+    showToast('FoodPoint se está reiniciando…', 'success');
   }
 }
 
@@ -6301,7 +6308,8 @@ function startClock() {
 // ===================== BOOT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   await loadDataFromAPI();
-  fillAccount('admin@mesana.mx', state.owner.pass || 'admin123');
+  fillAccount(state.owner.email || 'admin@foodpoint.mx', state.owner.pass || 'admin123');
+  avisoNuevoNombre();
 });
 
 // ===================== ATAJOS DE TECLADO (estilo Eleventa) =====================
@@ -6635,7 +6643,7 @@ function handleUpdateStatus(info) {
   const prev = updateInfo.status;
   updateInfo = info || { status: 'idle' };
   if (updateInfo.status === 'downloading' && prev !== 'downloading') {
-    showToast(`Descargando Mesana ${updateInfo.version || 'nueva'} en segundo plano…`, 'success');
+    showToast(`Descargando FoodPoint ${updateInfo.version || 'nueva'} en segundo plano…`, 'success');
   }
   renderUpdateBanner();
   renderUpdateCard();
@@ -6650,18 +6658,18 @@ function renderUpdateBanner() {
   banner.innerHTML = `
     <div class="update-banner-ic">↻</div>
     <div class="update-banner-txt">
-      <strong>Mesana ${esc(updateInfo.version)} está lista</strong>
+      <strong>FoodPoint ${esc(updateInfo.version)} está lista</strong>
       <span>Se instala al reiniciar (tarda unos segundos). Tus datos no se tocan.</span>
     </div>
     <button class="btn btn-primary btn-sm" onclick="installUpdateNow()">Reiniciar y actualizar</button>
-    <button class="update-banner-x" onclick="dismissUpdateBanner()" title="Más tarde (se instalará al cerrar Mesana)">×</button>`;
+    <button class="update-banner-x" onclick="dismissUpdateBanner()" title="Más tarde (se instalará al cerrar FoodPoint)">×</button>`;
   document.body.appendChild(banner);
 }
 
 function dismissUpdateBanner() {
   updateBannerDismissed = updateInfo.version;
   renderUpdateBanner();
-  showToast('Se instalará sola la próxima vez que cierres Mesana', 'success');
+  showToast('Se instalará sola la próxima vez que cierres FoodPoint', 'success');
 }
 
 async function installUpdateNow() {
@@ -6669,7 +6677,7 @@ async function installUpdateNow() {
   if (pending && !confirm('Hay productos en el ticket actual. Se guardan, pero ¿reiniciar ahora para actualizar?')) return;
   // Respaldo justo antes de actualizar, por si acaso.
   try { await fetch('/api/backups/now', { method: 'POST' }); } catch (e) { /* no bloquea la actualizacion */ }
-  showToast('Actualizando… Mesana se volverá a abrir sola', 'success');
+  showToast('Actualizando… FoodPoint se volverá a abrir solo', 'success');
   setTimeout(() => window.mesanaDesktop?.installUpdate(), 600);
 }
 
@@ -6686,7 +6694,7 @@ function updateStatusText() {
     case 'ready': return `La versión ${esc(updateInfo.version)} ya se descargó. Se instala al reiniciar.`;
     case 'error': return esc(updateInfo.message || 'No se pudo revisar.');
     case 'dev': return 'Modo desarrollo: las actualizaciones solo funcionan en la app instalada.';
-    default: return window.mesanaDesktop ? 'Mesana revisa sola cada pocas horas.' : 'Abierto desde el navegador: sin actualizaciones automáticas.';
+    default: return window.mesanaDesktop ? 'FoodPoint revisa solo cada pocas horas.' : 'Abierto desde el navegador: sin actualizaciones automáticas.';
   }
 }
 
@@ -6798,7 +6806,7 @@ async function enforceLicense() {
   const info = await fetchLicense();
   if (!info) return true;
   if (info.status === 'prueba' && currentUser?.role === 'owner' && info.trialDaysLeft <= 7) {
-    showToast(`Prueba de Mesana: quedan ${info.trialDaysLeft} días. Activa tu licencia en Configuración.`, 'success');
+    showToast(`Prueba de FoodPoint: quedan ${info.trialDaysLeft} días. Activa tu licencia en Configuración.`, 'success');
   }
   if (info.status !== 'vencida') return true;
   showLicenseGate(info);
@@ -6812,7 +6820,7 @@ function showLicenseGate(info) {
   gate.className = 'license-gate';
   gate.innerHTML = `<div class="license-gate-card">
     <div class="license-gate-mark">${renderBrandMarkMarkup(26)}</div>
-    <h2>Activa tu licencia de Mesana</h2>
+    <h2>Activa tu licencia de FoodPoint</h2>
     <p>${esc(info.reason || 'Este equipo no tiene una licencia activa.')} Tus ventas, productos y respaldos siguen guardados; solo falta activar.</p>
     ${licenseSummaryHtml(info)}
     ${licenseFormHtml('gateLicenseKey')}
@@ -7021,7 +7029,7 @@ async function reimprimirComanda(id) {
 
 function encabezadoTicket(L) {
   const s = state.settings;
-  L.push({ tipo: 'texto', texto: s.restaurantName || 'Mesana', alinear: 'centro', tam: 'alto', negrita: true });
+  L.push({ tipo: 'texto', texto: s.restaurantName || 'FoodPoint', alinear: 'centro', tam: 'alto', negrita: true });
   if (s.address) L.push({ tipo: 'texto', texto: s.address, alinear: 'centro' });
   if (s.phone) L.push({ tipo: 'texto', texto: `Tel. ${s.phone}`, alinear: 'centro' });
   if (s.rfc) L.push({ tipo: 'texto', texto: `RFC ${s.rfc}`, alinear: 'centro' });
@@ -7280,7 +7288,7 @@ async function probarImpresora(destino) {
   L.push({ tipo: 'texto', texto: '   Asado · sin cebolla' });
   L.push({ tipo: 'fila', izq: 'Acentos: áéíóú ñ ¿? ¡!', der: 'OK' });
   L.push({ tipo: 'linea' });
-  L.push({ tipo: 'texto', texto: `${state.settings.restaurantName || 'Mesana'} · ${fechaCorta()} ${horaCorta()}`, alinear: 'centro' });
+  L.push({ tipo: 'texto', texto: `${state.settings.restaurantName || 'FoodPoint'} · ${fechaCorta()} ${horaCorta()}`, alinear: 'centro' });
   const ok = await imprimirDocumento(destino, { lineas: L });
   if (ok) showToast('Prueba enviada a la impresora', 'success');
 }
@@ -7331,4 +7339,34 @@ async function nuevoCodigoCocina() {
   if (!confirm('Las tablets que ya están conectadas tendrán que escribir el código nuevo. ¿Cambiarlo?')) return;
   await fetch('/api/config/kitchen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nuevoCodigo: true }) });
   await loadPrintSettings();
+}
+
+
+// ===================== MESANA AHORA ES FOODPOINT =====================
+// Se muestra una sola vez en cada equipo que ya tenia ventas, para que nadie se
+// asuste al ver otro nombre y otro logo despues de la actualizacion.
+function avisoNuevoNombre() {
+  let visto = null;
+  try { visto = localStorage.getItem('foodpoint-aviso-nombre'); } catch (e) { /* sin almacenamiento */ }
+  if (visto || !(state.salesRecords || []).length) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'avisoNombre';
+  overlay.innerHTML = `<div class="modal rebrand-modal">
+    <img class="rebrand-logo" src="assets/img/foodpoint-logo.png" alt="FoodPoint · Punto de venta & sabor">
+    <h2>Mesana ahora se llama FoodPoint</h2>
+    <p>Es el mismo sistema que ya usas: tus ventas, productos, combos, usuarios, respaldos y configuración siguen exactamente igual. Solo cambiaron el nombre y el logo.</p>
+    <p class="rebrand-sub">¿Quieres usar también los colores nuevos de FoodPoint? Puedes cambiarlos cuando quieras abajo a la izquierda.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarAvisoNombre(false)">Conservar mis colores</button>
+      <button class="btn btn-primary" onclick="cerrarAvisoNombre(true)">Usar colores FoodPoint</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function cerrarAvisoNombre(usarColores) {
+  try { localStorage.setItem('foodpoint-aviso-nombre', '1'); } catch (e) { /* sin almacenamiento */ }
+  document.getElementById('avisoNombre')?.remove();
+  if (usarColores) await applyTheme('theme-foodpoint', true);
 }

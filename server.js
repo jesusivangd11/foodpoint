@@ -16,9 +16,16 @@ let onRestartRequested = null;
 // --- Carpeta de datos (separada del codigo) ---
 // Los datos NUNCA viven junto al codigo, para que actualizar el programa
 // no pueda borrar la base de datos ni los respaldos.
-// Prioridad: variable de entorno MESANA_DATA_DIR > %LOCALAPPDATA%\Mesana > la propia carpeta (ultimo recurso).
-const DATA_DIR = process.env.MESANA_DATA_DIR
-  || (process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Mesana') : __dirname);
+// Prioridad: variable de entorno MESANA_DATA_DIR > %LOCALAPPDATA%\Mesana (si ya existe:
+// equipos instalados antes del cambio de nombre a FoodPoint; NO se mueve para no
+// arriesgar los datos) > %LOCALAPPDATA%\FoodPoint > la propia carpeta (ultimo recurso).
+function resolverDataDir() {
+  if (process.env.MESANA_DATA_DIR) return process.env.MESANA_DATA_DIR;
+  if (!process.env.LOCALAPPDATA) return __dirname;
+  const anterior = path.join(process.env.LOCALAPPDATA, 'Mesana');
+  return fs.existsSync(anterior) ? anterior : path.join(process.env.LOCALAPPDATA, 'FoodPoint');
+}
+const DATA_DIR = resolverDataDir();
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'database.db');
@@ -364,7 +371,7 @@ function createTables() {
             if (alters === 0) {
               // Insert default settings if not exist
               db.run(`INSERT OR IGNORE INTO settings (id, restaurantName, rfc, address, phone, logoDataUrl, ticketFooter, currency, kitchenPrinter, cashPrinter, theme, dailyOrderCounter, lastOrderDate)
-                       VALUES (1, 'Mesana', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-sage', 0, '')`);
+                       VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-foodpoint', 0, '')`);
             }
           };
           if (!columnNames.includes('dailyOrderCounter')) {
@@ -378,7 +385,7 @@ function createTables() {
           if (alters === 0) {
             // Insert default settings if not exist
             db.run(`INSERT OR IGNORE INTO settings (id, restaurantName, rfc, address, phone, logoDataUrl, ticketFooter, currency, kitchenPrinter, cashPrinter, theme, dailyOrderCounter, lastOrderDate)
-                     VALUES (1, 'Mesana', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-sage', 0, '')`);
+                     VALUES (1, 'FoodPoint', 'XAXX010101000', 'Av. Principal #100, Chihuahua, Chih.', '', '', 'Gracias por su preferencia', 'MXN - Peso Mexicano', '192.168.1.101:9100', '192.168.1.102:9100', 'theme-foodpoint', 0, '')`);
           }
         });
       }
@@ -391,8 +398,14 @@ function createTables() {
     db.run(`INSERT OR IGNORE INTO categories (name) VALUES ('Entradas')`);
 
     // Insert default owner if not exist
-    db.run(`INSERT OR IGNORE INTO users (name, email, role, status, since, pass, isDefault)
-             VALUES ('Jesus Garcia', 'admin@mesana.mx', 'Propietario', 'Activo', '2024-01-01', 'admin123', 1)`);
+    // "Mesana" era el nombre de fabrica del restaurante; tras el cambio de marca se
+    // muestra "FoodPoint". Un nombre personalizado (cualquier otro) no se toca.
+    db.run(`UPDATE settings SET restaurantName = 'FoodPoint' WHERE id = 1 AND restaurantName = 'Mesana'`);
+
+    // Solo en una base nueva (sin dueño). Las instalaciones anteriores conservan su usuario.
+    db.run(`INSERT INTO users (name, email, role, status, since, pass, isDefault)
+             SELECT 'Propietario', 'admin@foodpoint.mx', 'Propietario', 'Activo', date('now'), 'admin123', 1
+             WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'Propietario')`);
   });
 }
 
@@ -981,6 +994,7 @@ async function kitchenAuth(req, res, next) {
 
 kitchenApp.get('/', (req, res) => res.sendFile(path.join(__dirname, 'cocina.html')));
 kitchenApp.use('/assets/fonts', express.static(path.join(__dirname, 'assets', 'fonts')));
+kitchenApp.get('/assets/img/foodpoint-mark-512.png', (req, res) => res.sendFile(path.join(__dirname, 'assets', 'img', 'foodpoint-mark-512.png')));
 
 kitchenApp.get('/api/tickets', kitchenAuth, (req, res) => {
   const desde = new Date(Date.now() - 16 * 3600e3).toISOString();
@@ -990,7 +1004,7 @@ kitchenApp.get('/api/tickets', kitchenAuth, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     rows.forEach((r) => { try { r.items = JSON.parse(r.items); } catch (e) { r.items = []; } });
     db.get('SELECT restaurantName FROM settings WHERE id = 1', [], (e2, s) => {
-      res.json({ restaurante: (s && s.restaurantName) || 'Mesana', ahora: new Date().toISOString(), tickets: rows });
+      res.json({ restaurante: (s && s.restaurantName) || 'FoodPoint', ahora: new Date().toISOString(), tickets: rows });
     });
   });
 });

@@ -1,10 +1,10 @@
-﻿CONTRATO DE LICENCIA DE USO — MESANA
+﻿CONTRATO DE LICENCIA DE USO — FOODPOINT
 Punto de venta para restaurantes
 
-Al instalar o usar Mesana ("el Software") aceptas estos términos. Si no estás de acuerdo, no instales el Software.
+Al instalar o usar FoodPoint ("el Software") aceptas estos términos. Si no estás de acuerdo, no instales el Software.
 
 1. LICENCIA
-El titular de Mesana te concede una licencia no exclusiva e intransferible para instalar y usar el Software en tu negocio, en el número de equipos que indique tu plan. El Software se licencia, no se vende: el titular conserva todos los derechos de autor y de propiedad intelectual.
+El titular de FoodPoint te concede una licencia no exclusiva e intransferible para instalar y usar el Software en tu negocio, en el número de equipos que indique tu plan. El Software se licencia, no se vende: el titular conserva todos los derechos de autor y de propiedad intelectual.
 
 2. PRUEBA GRATUITA
 Puedes usar el Software sin clave durante 30 días. Al terminar la prueba necesitas una clave de licencia válida para seguir operando. Tus datos (ventas, productos, respaldos) no se borran cuando termina la prueba ni cuando vence una licencia.
@@ -15,13 +15,13 @@ Puedes usar el Software sin clave durante 30 días. Al terminar la prueba necesi
 - Usar una clave en más equipos de los que cubre tu plan.
 
 4. ACTUALIZACIONES
-El Software puede descargar e instalar actualizaciones automáticamente desde los servidores oficiales de Mesana. Las actualizaciones forman parte del Software y se rigen por este contrato. Las actualizaciones nunca borran tus datos.
+El Software puede descargar e instalar actualizaciones automáticamente desde los servidores oficiales de FoodPoint. Las actualizaciones forman parte del Software y se rigen por este contrato. Las actualizaciones nunca borran tus datos.
 
 5. TUS DATOS
-Tus datos se guardan únicamente en tu equipo (carpeta %LOCALAPPDATA%\Mesana). Mesana no envía tus ventas ni tu información a ningún servidor. Eres responsable de conservar tus respaldos; el Software crea copias automáticas cada hora.
+Tus datos se guardan únicamente en tu equipo (carpeta %LOCALAPPDATA%\FoodPoint, o %LOCALAPPDATA%\Mesana en equipos instalados antes del cambio de nombre). FoodPoint no envía tus ventas ni tu información a ningún servidor. Eres responsable de conservar tus respaldos; el Software crea copias automáticas cada hora.
 
 6. FACTURACIÓN Y OBLIGACIONES FISCALES
-Mesana es un sistema de punto de venta y control interno. Los tickets que imprime no son comprobantes fiscales (CFDI). El cumplimiento de tus obligaciones fiscales es tu responsabilidad.
+FoodPoint es un sistema de punto de venta y control interno. Los tickets que imprime no son comprobantes fiscales (CFDI). El cumplimiento de tus obligaciones fiscales es tu responsabilidad.
 
 7. GARANTÍA Y RESPONSABILIDAD
 El Software se entrega "tal cual". En la medida que lo permita la ley, el titular no será responsable por pérdidas de ganancias, de datos o daños indirectos derivados del uso o la imposibilidad de uso del Software. La responsabilidad total del titular no excederá el monto pagado por la licencia en los últimos 12 meses.
@@ -32,4 +32,4 @@ Esta licencia termina automáticamente si incumples estos términos. Al terminar
 9. LEY APLICABLE
 Este contrato se rige por las leyes de los Estados Unidos Mexicanos.
 
-© 2026 Mesana. Todos los derechos reservados.
+© 2026 FoodPoint. Todos los derechos reservados.

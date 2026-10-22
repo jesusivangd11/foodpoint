@@ -1,5 +1,11 @@
 [
   {
+    "version": "3.3.0",
+    "fecha": "2026-10-22",
+    "titulo": "Mesana ahora es FoodPoint",
+    "notas": "- **Nuevo nombre y logo:** Mesana ahora se llama **FoodPoint**. Es el mismo sistema: tus ventas, productos, usuarios, respaldos y licencia siguen igual.\n- **Colores de la marca:** nuevo tema FoodPoint (olivo y terracota). Puedes conservar tus colores si prefieres.\n- El acceso directo del escritorio y el menú Inicio ahora dicen FoodPoint."
+  },
+  {
     "version": "3.2.2",
     "fecha": "2026-10-21",
     "titulo": "Comandas impresas en cocina y monitor de cocina",

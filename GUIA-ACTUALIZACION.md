@@ -1,4 +1,4 @@
-# Guía de Mesana — Actualizaciones, licencias y página web
+# Guía de FoodPoint (antes Mesana) — Actualizaciones, licencias y página web
 
 Mesana es una **aplicación de escritorio** (Electron): se instala con un `.exe` y
 abre en su propia ventana. Desde la **3.2.0 se actualiza sola** en cada equipo.
@@ -116,11 +116,38 @@ precios, novedades), `ayuda.html` (guía de uso con buscador) y `licencia.html`.
 
 ## PC de trabajo (instalación manual, como respaldo)
 
-1. Copia `dist-installer\Mesana-Setup-X.X.X.exe` a la PC de trabajo (USB).
+1. Copia `dist-installer\FoodPoint-Setup-X.X.X.exe` a la PC de trabajo (USB).
 2. Doble clic → **Siguiente / Instalar**. Tus datos siguen intactos.
 
 
 ---
+
+## Versión 3.3.0 — Mesana ahora es FoodPoint
+
+Todo lo **visible** dice FoodPoint (app, ventana, ícono, accesos directos, instalador
+`FoodPoint-Setup-X.exe`, tickets, monitor de cocina, contrato y página web).
+Lo **interno** se conservó a propósito para no romper equipos instalados:
+
+| Se quedó igual | Por qué |
+|---|---|
+| `appId` `com.mesana.pos` | Si cambia, Windows lo trata como otro programa y la actualización automática se rompe. |
+| Repo `mesana-releases` | Es de donde los equipos ya instalados buscan actualizaciones. |
+| Carpeta de datos `%LOCALAPPDATA%\Mesana` | Equipos existentes la siguen usando; las instalaciones **nuevas** usan `%LOCALAPPDATA%\FoodPoint`. No se mueve para no arriesgar datos. |
+| Licencias `MSN1.` e ID de equipo | Cambiarlos invalidaría las licencias ya emitidas. |
+| Carpeta `%USERPROFILE%\.mesana-licencias` | Solo en la PC de desarrollo. |
+
+**Accesos directos al actualizar:** electron-builder renombra el acceso "Mesana 3.0"
+a "FoodPoint", pero conservaría el destino viejo (`Mesana 3.0.exe`, que se borra).
+`build/installer.nsh` (macro `customInstall`) los recrea apuntando a `FoodPoint.exe` y
+relanza ese. **Probado** actualizando una instalación real 3.2.1 → 3.3.0 en la PC de
+desarrollo: misma carpeta, accesos nuevos funcionando, app reabierta sola, datos intactos.
+
+El nombre de restaurante de fábrica "Mesana" se migra a "FoodPoint" al arrancar.
+Al primer inicio en equipos con ventas aparece una vez el aviso "Mesana ahora se llama
+FoodPoint" con la opción de usar el tema de color nuevo (`theme-foodpoint`).
+
+Logo: `assets/img/foodpoint-mark-512.png` (insignia sobre disco crema; el tenedor del logo
+es del mismo crema que el fondo, por eso no puede ir sin disco), `foodpoint.ico` (16–256 px).
 
 ## Versión 3.2.2 — impresión real y monitor de cocina
 

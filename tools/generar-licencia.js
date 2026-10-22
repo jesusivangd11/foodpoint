@@ -1,4 +1,4 @@
-// Genera una licencia de Mesana para un cliente. Solo funciona en la PC que tiene
+// Genera una licencia de FoodPoint para un cliente. Solo funciona en la PC que tiene
 // la clave privada (por defecto en %USERPROFILE%\.mesana-licencias\clave-privada.pem).
 // Esa clave NUNCA se sube a GitHub ni se copia al instalador.
 //

@@ -2,13 +2,13 @@
 setlocal
 cd /d "%~dp0"
 echo ============================================
-echo   Publicar actualizacion de Mesana
+echo   Publicar actualizacion de FoodPoint
 echo ============================================
 echo.
 echo Antes de seguir:
 echo   1. Sube "version" en package.json (ej. 3.2.1 -^> 3.2.2)
 echo   2. Escribe las novedades en build\release-notes.md
-echo Todas las PCs con Mesana instalada la descargaran solas.
+echo Todas las PCs con FoodPoint instalado la descargaran solas.
 echo.
 
 rem El token de GitHub se lee de la variable GH_TOKEN o de este archivo
@@ -23,7 +23,7 @@ if "%GH_TOKEN%"=="" (
 
 for /f "delims=" %%v in ('node -p "require('./package.json').version"') do set VERSION=%%v
 echo Version a publicar: %VERSION%
-choice /m "Publicar Mesana %VERSION% para todos los equipos"
+choice /m "Publicar FoodPoint %VERSION% para todos los equipos"
 if errorlevel 2 exit /b 0
 
 call npm run release
@@ -35,7 +35,7 @@ if errorlevel 1 echo *** La version se publico, pero no se pudieron copiar las n
 
 echo.
 echo ============================================
-echo   Listo. Mesana %VERSION% quedo publicada en GitHub Releases.
+echo   Listo. FoodPoint %VERSION% quedo publicado en GitHub Releases.
 echo   Revisala en:
 echo   https://github.com/jesusivangd11/mesana-releases/releases
 echo ============================================

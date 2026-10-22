@@ -1,8 +1,8 @@
-// Licencias de Mesana.
+// Licencias de FoodPoint (antes Mesana).
 //
 // Una licencia es un texto "MSN1.<datos>.<firma>": los datos (cliente, plan,
 // vencimiento y, opcionalmente, el equipo) van firmados con la clave PRIVADA de
-// Mesana, que solo existe en la PC de desarrollo (tools/generar-licencia.js).
+// FoodPoint, que solo existe en la PC de desarrollo (tools/generar-licencia.js).
 // Aqui solo vive la clave PUBLICA: sirve para comprobar que la licencia es
 // autentica, pero no para fabricar licencias nuevas. Todo funciona sin internet.
 //
@@ -22,7 +22,7 @@ MCowBQYDK2VwAyEAYWqLd8Nw2e3ge3jcr4nq1btEUf3sZZZ8ufUuwANOqB8=
 -----END PUBLIC KEY-----`;
 
 const TRIAL_DAYS = 30;
-// Quien ya tenia ventas antes de esta fecha usaba Mesana antes de las licencias:
+// Quien ya tenia ventas antes de esta fecha usaba el sistema antes de las licencias:
 // se le respeta como "fundador" sin pedirle nada.
 const FOUNDER_CUTOFF = '2026-10-22';
 
@@ -44,6 +44,8 @@ function machineId() {
     }
   } catch (e) { /* sin acceso al registro: se usa el nombre del equipo */ }
   if (!raw) raw = os.hostname();
+  // 'mesana:' se conserva a proposito: cambiarlo cambiaria el ID de todos los equipos
+  // y las licencias ligadas a equipo dejarian de valer.
   const hex = crypto.createHash('sha256').update('mesana:' + raw).digest('hex').toUpperCase();
   cachedMachineId = `${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`;
   return cachedMachineId;
@@ -58,7 +60,7 @@ function signLicense(payload, privateKeyPem) {
 // Devuelve { ok, payload } o { ok:false, error } con un mensaje entendible.
 function verifyLicense(key, { now = new Date(), machine = machineId() } = {}) {
   const parts = String(key || '').trim().replace(/\s+/g, '').split('.');
-  if (parts.length !== 3 || parts[0] !== 'MSN1') return { ok: false, error: 'La clave no tiene el formato de una licencia de Mesana.' };
+  if (parts.length !== 3 || parts[0] !== 'MSN1') return { ok: false, error: 'La clave no tiene el formato de una licencia de FoodPoint.' };
   let payload;
   try {
     const valid = crypto.verify(null, Buffer.from(parts[1]), PUBLIC_KEY_PEM, b64url.decode(parts[2]));

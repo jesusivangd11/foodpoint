@@ -17,7 +17,7 @@ window.MESANA_SITE = {
   planes: [
     {
       id: 'prueba', nombre: 'Prueba', precio: 0, periodo: '30 días',
-      lema: 'Todo Mesana, sin tarjeta.',
+      lema: 'Todo FoodPoint, sin tarjeta.',
       incluye: ['Todas las funciones', 'Actualizaciones automáticas', 'Tus datos se quedan al activar'],
       cta: 'Descargar gratis', accion: 'descargar',
     },

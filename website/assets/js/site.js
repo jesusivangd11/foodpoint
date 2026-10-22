@@ -1,4 +1,4 @@
-// Mesana · sitio oficial: novedades, descargas, avisos de version y detalles de interfaz.
+// FoodPoint · sitio oficial: novedades, descargas, avisos de version y detalles de interfaz.
 (() => {
   const cfg = window.MESANA_SITE || {};
   const $ = (s, r = document) => r.querySelector(s);
@@ -14,17 +14,17 @@
   // ---------- Contacto ----------
   function contactHref(motivo) {
     const c = cfg.contacto || {};
-    const texto = `Hola, me interesa Mesana${motivo ? ` (${motivo})` : ''}.`;
+    const texto = `Hola, me interesa FoodPoint${motivo ? ` (${motivo})` : ''}.`;
     if (c.whatsapp) return `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(texto)}`;
-    return `mailto:${c.email}?subject=${encodeURIComponent('Mesana · ' + (motivo || 'Información'))}&body=${encodeURIComponent(texto)}`;
+    return `mailto:${c.email}?subject=${encodeURIComponent('FoodPoint · ' + (motivo || 'Información'))}&body=${encodeURIComponent(texto)}`;
   }
   const c = cfg.contacto || {};
   $$('[data-contacto]').forEach((a) => { a.href = contactHref(a.dataset.contacto); });
   $$('[data-whatsapp]').forEach((a) => {
-    a.href = `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(`Hola ${c.nombre || ''}, me interesa Mesana${a.dataset.whatsapp ? ` (${a.dataset.whatsapp})` : ''}.`)}`;
+    a.href = `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(`Hola ${c.nombre || ''}, me interesa FoodPoint${a.dataset.whatsapp ? ` (${a.dataset.whatsapp})` : ''}.`)}`;
     a.target = '_blank'; a.rel = 'noopener';
   });
-  $$('[data-mailto]').forEach((a) => { a.href = `mailto:${c.email}?subject=${encodeURIComponent('Mesana · ' + (a.dataset.mailto || 'Información'))}`; });
+  $$('[data-mailto]').forEach((a) => { a.href = `mailto:${c.email}?subject=${encodeURIComponent('FoodPoint · ' + (a.dataset.mailto || 'Información'))}`; });
   $$('[data-email]').forEach((el) => { el.textContent = c.email || ''; });
   $$('[data-telefono]').forEach((el) => { el.textContent = c.telefono || ''; });
 
@@ -133,7 +133,7 @@
     if (bell && panel) {
       panel.innerHTML = `<p class="bell-head">Novedades</p>` + rel.slice(0, 3).map((x, i) => `
         <a class="bell-item" href="index.html#novedades">
-          <strong>Mesana ${esc(x.version)}${i === 0 && seen !== x.version ? ' <em>nuevo</em>' : ''}</strong>
+          <strong>FoodPoint ${esc(x.version)}${i === 0 && seen !== x.version ? ' <em>nuevo</em>' : ''}</strong>
           <span>${esc(x.titulo || firstLine(x.notas))}</span>
           <time>${esc(fechaLarga(x.fecha))}</time>
         </a>`).join('') + `<a class="bell-all" href="index.html#novedades">Ver todas las novedades →</a>`;
@@ -150,7 +150,7 @@
     }
     const bar = $('#announce');
     if (bar && seen !== latest.version) {
-      bar.innerHTML = `<span class="announce-dot"></span> Nuevo: <strong>Mesana ${esc(latest.version)}</strong> — ${esc(latest.titulo || firstLine(latest.notas))} <a href="index.html#novedades">Ver novedades →</a><button aria-label="Cerrar aviso">×</button>`;
+      bar.innerHTML = `<span class="announce-dot"></span> Nuevo: <strong>FoodPoint ${esc(latest.version)}</strong> — ${esc(latest.titulo || firstLine(latest.notas))} <a href="index.html#novedades">Ver novedades →</a><button aria-label="Cerrar aviso">×</button>`;
       bar.hidden = false;
       bar.querySelector('button').addEventListener('click', () => { bar.hidden = true; store.set(SEEN_KEY, latest.version); bell?.classList.remove('has-new'); });
     }

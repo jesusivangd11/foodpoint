@@ -1,7 +1,7 @@
 {
   "name": "mesana",
-  "version": "3.2.2",
-  "description": "Mesana - Punto de venta para restaurante (app de escritorio)",
+  "version": "3.3.0",
+  "description": "FoodPoint - Punto de venta para restaurantes (app de escritorio)",
   "main": "main.js",
   "author": "Jesus",
   "scripts": {
@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.mesana.pos",
-    "productName": "Mesana 3.0",
+    "productName": "FoodPoint",
     "directories": {
       "output": "dist-installer"
     },
@@ -37,7 +37,7 @@
       "cocina.html",
       "printing.js",
       "index.html",
-      "mesana.ico",
+      "foodpoint.ico",
       "assets/**/*",
       "node_modules/**/*"
     ],
@@ -48,8 +48,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "mesana.ico",
-      "artifactName": "Mesana-Setup-${version}.${ext}"
+      "icon": "foodpoint.ico",
+      "artifactName": "FoodPoint-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -57,9 +57,12 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Mesana 3.0",
+      "shortcutName": "FoodPoint",
       "runAfterFinish": true,
-      "license": "LICENCIA.txt"
+      "license": "LICENCIA.txt",
+      "include": "build/installer.nsh",
+      "installerIcon": "foodpoint.ico",
+      "uninstallerIcon": "foodpoint.ico"
     },
     "publish": [
       {
@@ -68,6 +71,7 @@
         "repo": "mesana-releases",
         "releaseType": "release"
       }
-    ]
+    ],
+    "copyright": "© 2026 FoodPoint"
   }
 }

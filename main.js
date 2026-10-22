@@ -1,4 +1,4 @@
-// Mesana 3.0 — Proceso principal de Electron.
+// FoodPoint (antes Mesana) — Proceso principal de Electron.
 // Levanta el servidor interno (Express + SQLite) y lo muestra en una ventana
 // de escritorio propia. No abre cmd ni navegador.
 const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
@@ -11,7 +11,7 @@ let mainWindow = null;
 // Cada equipo revisa solo si hay version nueva en GitHub Releases (ver "publish"
 // en package.json), la descarga en segundo plano y avisa en la interfaz. Se
 // instala cuando el usuario pulsa "Reiniciar y actualizar" o, si no lo hace, al
-// cerrar Mesana. Los datos viven en %LOCALAPPDATA%\Mesana y no se tocan.
+// cerrar FoodPoint. Los datos viven aparte (ver dataDir()) y no se tocan.
 const UPDATE_CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
 let updateState = { status: 'idle' };
 let autoUpdater = null;
@@ -70,7 +70,7 @@ ipcMain.handle('update:check', async () => {
 });
 ipcMain.handle('update:install', () => {
   if (!autoUpdater || updateState.status !== 'ready') return false;
-  // isSilent=true: sin asistente del instalador; isForceRunAfter=true: reabre Mesana al terminar.
+  // isSilent=true: sin asistente del instalador; isForceRunAfter=true: reabre FoodPoint al terminar.
   setImmediate(() => autoUpdater.quitAndInstall(true, true));
   return true;
 });
@@ -126,8 +126,8 @@ ipcMain.handle('kitchen:open', (_event, url) => {
     y: destino.bounds.y + 40,
     width: 1280,
     height: 800,
-    title: 'Mesana · Cocina',
-    icon: path.join(__dirname, 'mesana.ico'),
+    title: 'FoodPoint · Cocina',
+    icon: path.join(__dirname, 'foodpoint.ico'),
     autoHideMenuBar: true,
     backgroundColor: '#101712',
     webPreferences: { contextIsolation: true, nodeIntegration: false },
@@ -151,10 +151,17 @@ const ZOOM_POR_DEFECTO = 1.0;
 const ZOOM_MIN = 0.8;
 const ZOOM_MAX = 2.0;
 
+// Misma carpeta de datos que server.js: la de "Mesana" si ya existe (instalaciones
+// anteriores al cambio de nombre), si no la de "FoodPoint".
+function dataDir() {
+  if (process.env.MESANA_DATA_DIR) return process.env.MESANA_DATA_DIR;
+  const base = process.env.LOCALAPPDATA || app.getPath('userData');
+  const anterior = path.join(base, 'Mesana');
+  return fs.existsSync(anterior) ? anterior : path.join(base, 'FoodPoint');
+}
+
 function rutaZoom() {
-  const dir = process.env.MESANA_DATA_DIR
-    || path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'Mesana');
-  return path.join(dir, 'zoom.json');
+  return path.join(dataDir(), 'zoom.json');
 }
 
 function leerZoom() {
@@ -188,7 +195,7 @@ function cambiarZoom(paso) {
 }
 
 // --- Una sola instancia ---
-// Si Mesana ya está abierta, un segundo doble-clic enfoca la ventana existente
+// Si FoodPoint ya está abierto, un segundo doble-clic enfoca la ventana existente
 // en vez de arrancar otro servidor en el mismo puerto.
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -214,9 +221,9 @@ if (!gotLock) {
       });
     } catch (err) {
       const msg = err && err.code === 'EADDRINUSE'
-        ? 'Mesana ya está en uso (puerto 4173 ocupado).\nCierra la otra ventana e intenta de nuevo.'
-        : 'No se pudo iniciar Mesana:\n' + (err && err.message ? err.message : String(err));
-      dialog.showErrorBox('Mesana 3.0', msg);
+        ? 'FoodPoint ya está en uso (puerto 4173 ocupado).\nCierra la otra ventana e intenta de nuevo.'
+        : 'No se pudo iniciar FoodPoint:\n' + (err && err.message ? err.message : String(err));
+      dialog.showErrorBox('FoodPoint', msg);
       app.exit(1);
       return;
     }
@@ -233,8 +240,8 @@ if (!gotLock) {
 function createWindow() {
   mainWindow = new BrowserWindow({
     show: false,
-    title: 'Mesana 3.0',
-    icon: path.join(__dirname, 'mesana.ico'),
+    title: 'FoodPoint',
+    icon: path.join(__dirname, 'foodpoint.ico'),
     autoHideMenuBar: true,
     backgroundColor: '#ffffff',
     webPreferences: {
@@ -264,12 +271,12 @@ function createWindow() {
 
 // Atajos para agrandar o achicar la interfaz sobre la marcha.
 // Se escuchan en la ventana (no en todo Windows) para no robarle las teclas
-// a otros programas cuando Mesana esta en segundo plano.
+// a otros programas cuando FoodPoint esta en segundo plano.
 function registrarAtajosZoom(win) {
   win.webContents.on('before-input-event', (event, input) => {
     // Nota: el menu de la app esta desactivado (Menu.setApplicationMenu(null)),
     // asi que F12 no abre las herramientas de desarrollo y queda libre para que
-    // Mesana la use como "Cobrar".
+    // FoodPoint la use como "Cobrar".
     if (input.type !== 'keyDown' || !input.control || input.alt) return;
     const tecla = String(input.key || '');
     if (tecla === '=' || tecla === '+') {
