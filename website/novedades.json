@@ -1,5 +1,11 @@
 [
   {
+    "version": "3.3.1",
+    "fecha": "2026-10-28",
+    "titulo": "Prueba de 30 días más confiable",
+    "notas": "- **Prueba gratuita:** los 30 días ahora se cuentan de forma segura en el equipo; reinstalar o borrar la carpeta de datos ya no los reinicia.\n- Licencias activas y equipos fundadores: sin cambios. Tus datos siguen igual."
+  },
+  {
     "version": "3.3.0",
     "fecha": "2026-10-22",
     "titulo": "Mesana ahora es FoodPoint",

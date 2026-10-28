@@ -64,7 +64,11 @@ instalarles la **3.2.0** a mano (USB, como siempre). A partir de ahí, ya no.
 
 ## Licencias
 
-- **Prueba:** 30 días completos desde que se instala la 3.2.0.
+- **Prueba:** 30 días completos desde que se instala la 3.2.0. Desde la 3.3.1 la fecha
+  de inicio se guarda en tres lugares (carpeta de datos, registro `HKCU\Software\FoodPoint` y
+  `C:\ProgramData\FoodPoint\fp.dat`) y cuenta la más antigua: reinstalar, borrar los datos o
+  atrasar el reloj no la reinicia. Cada marca lleva el ID del equipo. Solo la reinicia
+  quien borre las tres a la vez.
 - **Fundador:** si la base de datos tiene ventas anteriores al 22-oct-2026, el
   equipo queda con licencia "Fundador" automáticamente. La PC de trabajo actual
   entra aquí: **no hay que hacerle nada**.
@@ -104,11 +108,15 @@ El contrato de licencia (`LICENCIA.txt`) lo muestra el instalador y está tambi�
 Sitio estático (HTML/CSS/JS, sin compilar): `index.html` (inicio, funciones, video,
 precios, novedades), `ayuda.html` (guía de uso con buscador) y `licencia.html`.
 
+- **Dirección:** **https://foodpoint-app.vercel.app** (la oficial, en Vercel, proyecto
+  `foodpoint`). También responden `mesana-alpha.vercel.app` y `foodpoint-pos.vercel.app`,
+  pero no las compartas: usa solo `foodpoint-app`.
+
 - **Precios, contacto y repo de releases:** `website/assets/js/config.js`.
   Cambia el correo/WhatsApp de ejemplo antes de publicar.
 - **Novedades:** se leen de GitHub Releases; si no hay conexión usa
   `website/novedades.json`.
-- **Video:** `website/assets/video/mesana-tutorial.mp4`.
+- **Video:** `website/assets/video/foodpoint-tutorial.mp4`.
 - **Publicarla gratis:** sube la carpeta `website` a Netlify (arrastrar y soltar),
   Vercel o GitHub Pages del repo público `mesana-releases`.
 
@@ -119,6 +127,14 @@ precios, novedades), `ayuda.html` (guía de uso con buscador) y `licencia.html`.
 1. Copia `dist-installer\FoodPoint-Setup-X.X.X.exe` a la PC de trabajo (USB).
 2. Doble clic → **Siguiente / Instalar**. Tus datos siguen intactos.
 
+
+---
+
+## Versión 3.3.1 — prueba de 30 días reforzada
+
+Solo cambia `license.js`: ver "Licencias". Los equipos que ya estaban en prueba conservan
+su fecha y se copia a los otros dos lugares al abrir esta versión. Licencias activas y
+fundadores no cambian.
 
 ---
 
